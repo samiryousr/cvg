@@ -54,33 +54,48 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const setPrimaryColor = useResumeStore((state) => state.setPrimaryColor)
 
   const copy = {
-    saved: "محفوظ تلقائيًا على هذا الجهاز",
-    changeTemplate: "تغيير القالب",
-    downloadPdf: "تحميل PDF",
-    completion: "اكتمال السيرة",
-    basicInformation: "المعلومات الأساسية",
-    editHint: "عدّل بياناتك؛ تنسيق السيرة وعناوينها بالإنجليزية دائمًا.",
-    template: "القالب",
-    atsNote: "السيرة تُعرض بالإنجليزية. اختر لغة تسميات خانات الإدخال.",
-    primaryColor: "اللون الأساسي",
-    primaryColorAria: "اختيار اللون الأساسي للقالب",
-    experience: "الخبرات العملية",
-    education: "التعليم",
-    skills: "المهارات",
-    projects: "المشاريع",
-    certifications: "الشهادات",
-    addExperience: "+ إضافة خبرة",
-    addEducation: "+ إضافة مؤهل تعليمي",
-    addProject: "+ إضافة مشروع",
-    addCertification: "+ إضافة شهادة",
-    livePreview: "معاينة مباشرة",
-    previewHint: "التعديلات تظهر هنا تلقائيًا",
-    language: "لغة خانات الإدخال",
+    saved: isArabic ? "محفوظ تلقائيًا على هذا الجهاز" : "Saved on this device",
+    home: isArabic ? "العودة للرئيسية" : "Back to home",
+    downloadPdf: isArabic ? "تحميل PDF" : "Download PDF",
+    completion: isArabic ? "اكتمال السيرة" : "Resume completion",
+    basicInformation: isArabic ? "المعلومات الأساسية" : "Basic information",
+    editHint: isArabic
+      ? "عدّل بياناتك؛ تنسيق السيرة وعناوينها بالإنجليزية دائمًا."
+      : "Edit your details; the resume is always formatted in English.",
+    template: isArabic ? "القالب" : "Template",
+    atsNote: isArabic
+      ? "السيرة تُعرض بالإنجليزية. اختر لغة تسميات خانات الإدخال."
+      : "The resume is displayed in English. Choose a language for the input labels.",
+    primaryColor: isArabic ? "اللون الأساسي" : "Primary color",
+    primaryColorAria: isArabic
+      ? "اختيار اللون الأساسي للقالب"
+      : "Choose the template's primary color",
+    experience: isArabic ? "الخبرات العملية" : "Work experience",
+    education: isArabic ? "التعليم" : "Education",
+    skills: isArabic ? "المهارات" : "Skills",
+    projects: isArabic ? "المشاريع" : "Projects",
+    certifications: isArabic ? "الشهادات" : "Certifications",
+    addExperience: isArabic ? "+ إضافة خبرة" : "+ Add experience",
+    addEducation: isArabic
+      ? "+ إضافة مؤهل تعليمي"
+      : "+ Add education",
+    addProject: isArabic ? "+ إضافة مشروع" : "+ Add project",
+    addCertification: isArabic ? "+ إضافة شهادة" : "+ Add certification",
+    livePreview: isArabic ? "معاينة مباشرة" : "Live preview",
+    previewHint: isArabic
+      ? "التعديلات تظهر هنا تلقائيًا"
+      : "Your changes appear here automatically",
+    language: isArabic ? "لغة خانات الإدخال" : "Input language",
     arabic: "العربية",
     english: "English",
+    edit: isArabic ? "التعديل" : "Edit",
+    preview: isArabic ? "المعاينة" : "Preview",
   }
 
   const [activeSection, setActiveSection] = useState("personal")
+  const [activeMobilePanel, setActiveMobilePanel] = useState<"form" | "preview">(
+    "form",
+  )
 
   const completionFields = [
     personal.name,
@@ -128,41 +143,20 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   return (
     <div className="editor-shell" dir="ltr">
       <header className="editor-header" dir="rtl">
-        <button className="brand editor-brand" onClick={onBack}>
-          <span>س</span>
-          <strong>سيرتي</strong>
+        <button
+          className="home-button"
+          type="button"
+          onClick={onBack}
+          aria-label={copy.home}
+        >
+          {copy.home}
         </button>
         <div className="save-state">
           <span />
           {copy.saved}
         </div>
         <div className="header-actions">
-          <div
-            className="editor-language-switch"
-            role="group"
-            aria-label={copy.language}
-          >
-            <button
-              type="button"
-              aria-pressed={isArabic}
-              className={isArabic ? "active" : ""}
-              onClick={() => setEditorLanguage("ar")}
-            >
-              {copy.arabic}
-            </button>
-            <button
-              type="button"
-              aria-pressed={!isArabic}
-              className={!isArabic ? "active" : ""}
-              onClick={() => setEditorLanguage("en")}
-            >
-              {copy.english}
-            </button>
-          </div>
           <ThemeToggle />
-          <button className="ghost-button" onClick={onBack}>
-            {copy.changeTemplate}
-          </button>
           <button
             className="download-button"
             onClick={() => window.print()}
@@ -174,7 +168,41 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
       </header>
 
       <div className="editor-layout">
-        <aside className="form-panel" dir="rtl">
+        <div
+          className="mobile-editor-tabs"
+          role="tablist"
+          aria-label={isArabic ? "عرض السيرة الذاتية" : "Resume view"}
+        >
+          <button
+            id="mobile-form-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeMobilePanel === "form"}
+            aria-controls="editor-form-panel"
+            className={activeMobilePanel === "form" ? "active" : ""}
+            onClick={() => setActiveMobilePanel("form")}
+          >
+            {copy.edit}
+          </button>
+          <button
+            id="mobile-preview-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeMobilePanel === "preview"}
+            aria-controls="editor-preview-panel"
+            className={activeMobilePanel === "preview" ? "active" : ""}
+            onClick={() => setActiveMobilePanel("preview")}
+          >
+            {copy.preview}
+          </button>
+        </div>
+        <aside
+          id="editor-form-panel"
+          className={`form-panel${activeMobilePanel === "form" ? "" : " mobile-panel-hidden"}`}
+          dir={isArabic ? "rtl" : "ltr"}
+          role="tabpanel"
+          aria-labelledby="mobile-form-tab"
+        >
           <div className="progress-row">
             <span>{copy.completion}</span>
             <b>{completion}%</b>
@@ -187,6 +215,32 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
             aria-valuemax={100}
           >
             <span style={{ width: `${completion}%` }} />
+          </div>
+
+          <div
+            className="editor-language-switch"
+            role="group"
+            aria-label={copy.language}
+          >
+            <span>{copy.language}</span>
+            <div>
+              <button
+                type="button"
+                aria-pressed={isArabic}
+                className={isArabic ? "active" : ""}
+                onClick={() => setEditorLanguage("ar")}
+              >
+                {copy.arabic}
+              </button>
+              <button
+                type="button"
+                aria-pressed={!isArabic}
+                className={!isArabic ? "active" : ""}
+                onClick={() => setEditorLanguage("en")}
+              >
+                {copy.english}
+              </button>
+            </div>
           </div>
 
           <div className="form-title">
@@ -375,7 +429,13 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           )}
         </aside>
 
-        <main className="preview-panel" dir="ltr">
+        <main
+          id="editor-preview-panel"
+          className={`preview-panel${activeMobilePanel === "preview" ? "" : " mobile-panel-hidden"}`}
+          dir="ltr"
+          role="tabpanel"
+          aria-labelledby="mobile-preview-tab"
+        >
           <div className="preview-toolbar">
             <p>
               <span /> {copy.livePreview}

@@ -76,6 +76,15 @@ export type Certification = {
   period: string
 }
 
+export const atsTemplate: Template = {
+  id: "ats",
+  name: "متوافق مع ATS",
+  tone: "مهيأ للفحص الآلي",
+  description: "تخطيط أحادي العمود بلا صور أو جداول.",
+  accent: "#263238",
+  atsOptimized: true,
+}
+
 export const templates: Template[] = [
   {
     id: "modern",
@@ -98,14 +107,7 @@ export const templates: Template[] = [
     description: "مساحات مريحة وتركيز على المحتوى.",
     accent: "#6b6258",
   },
-  {
-    id: "ats",
-    name: "متوافق مع ATS",
-    tone: "مهيأ للفحص الآلي",
-    description: "تخطيط أحادي العمود بلا صور أو جداول.",
-    accent: "#263238",
-    atsOptimized: true,
-  },
+  atsTemplate,
 ]
 
 export const initialResume = {
@@ -180,7 +182,7 @@ export const initialResume = {
     "CI/CD",
   ],
 
-  templateId: "modern" as TemplateId,
+  templateId: "ats" as TemplateId,
   primaryColor: "#2f6b5f",
   colorMode: "light" as ColorMode,
   editorLanguage: "ar" as EditorLanguage,

@@ -281,11 +281,12 @@
 .theme-dark .theme-toggle { border-color: #455951; background: #26332e; color: #f0c879; }
 .theme-dark .editor-shell { background: #111816; }
 .theme-dark .editor-header { border-color: #2c3934; background: #19221f; }
+.theme-dark .home-button { border-color: #43524b; background: #202c27; color: #c6e2d3; }
 .theme-dark .save-state { color: #a9b8b1; }
-.theme-dark .editor-language-switch { border-color: #46564e; background: #19221f; }
+.theme-dark .editor-language-switch { border-color: #46564e; background: #19221f; color: #bdcbc4; }
+.theme-dark .editor-language-switch > div { border-color: #46564e; background: #202b26; }
 .theme-dark .editor-language-switch button { color: #b6c4bd; }
 .theme-dark .editor-language-switch button.active { background: #2a4036; color: #d8f0e4; }
-.theme-dark .ghost-button { border-color: #43524b; background: #202c27; color: #d4dfd9; }
 .theme-dark .form-panel { border-color: #2c3934; background: #19221f; }
 .theme-dark .progress-row, .theme-dark .form-title p { color: #a8b7b0; }
 .theme-dark .progress-row b { color: #9dceb8; }
@@ -312,6 +313,9 @@
 .theme-dark .repeatable-form-heading { color: #d8e4dd; }
 .theme-dark .remove-item-button { background: #4a302c; color: #ffc0ad; }
 .theme-dark .preview-panel { background: #111816; }
+.theme-dark .mobile-editor-tabs { border-color: #35433d; background: #19221f; }
+.theme-dark .mobile-editor-tabs button { color: #b6c4bd; }
+.theme-dark .mobile-editor-tabs button.active { background: #2a4036; color: #d8f0e4; }
 .theme-dark .preview-toolbar { color: #adbbb4; }
 .theme-dark .preview-hint { color: #9aa9a2; }
 .theme-dark .resume-paper { background: #fff; color: #293a36; }
@@ -350,15 +354,16 @@
 
 .editor-shell { min-height: 100vh; background: #e8ecea; }
 .editor-header { background: #fff; max-width: none; padding: 0 42px; border-bottom: 1px solid #e1e5e3; }
-.editor-brand { cursor: pointer; }
+.home-button { padding: 8px 12px; border: 1px solid #d5dcda; border-radius: 5px; background: #fff; color: #315d53; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .save-state { color: #7c8884; font-size: 11px; display: flex; align-items: center; gap: 8px; }
 .save-state span { width: 7px; height: 7px; background: #70a895; border-radius: 50%; }
 .header-actions { display: flex; gap: 10px; }
-.editor-language-switch { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid #d5dcda; border-radius: 5px; background: #f7f9f8; }
+.mobile-editor-tabs { display: none; }
+.editor-language-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding: 8px 10px; border: 1px solid #d5dcda; border-radius: 6px; background: #f7f9f8; color: #576560; font-size: 10px; font-weight: 700; }
+.editor-language-switch > div { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid #d5dcda; border-radius: 5px; background: #fff; }
 .editor-language-switch button { padding: 6px 9px; border: 0; border-radius: 3px; background: transparent; color: #64716d; font-size: 10px; }
 .editor-language-switch button.active { background: #e4ede8; color: #173f38; font-weight: 700; }
-.ghost-button, .download-button { border-radius: 3px; padding: 10px 17px; font-size: 11px; font-weight: 700; }
-.ghost-button { background: white; color: #42524e; border: 1px solid #d5dcda; }
+.download-button { border-radius: 3px; padding: 10px 17px; font-size: 11px; font-weight: 700; }
 .download-button { background: #173f38; color: white; border: 1px solid #173f38; }
 .editor-layout { display: grid; grid-template-columns: minmax(400px, 42%) 1fr; min-height: calc(100vh - 78px); }
 .form-panel { background: #fff; padding: 30px 44px 60px; overflow-y: auto; max-height: calc(100vh - 78px); border-right: 1px solid #dce2df; }
@@ -512,7 +517,7 @@
   .feature-card { border-bottom: 1px solid #e5e6e2; }
   .how-section { margin-inline: 20px; padding: 55px 40px; grid-template-columns: 1fr; gap: 50px; }
   .editor-header { padding: 0 18px; }
-  .save-state, .ghost-button { display: none; }
+  .save-state { display: none; }
   .editor-layout { display: flex; flex-direction: column; }
   .form-panel, .preview-panel { max-height: none; width: 100%; }
   .form-panel { order: 1; padding: 25px 20px 40px; }
@@ -582,21 +587,49 @@
   .final-cta { padding: 65px 20px; }
   .final-cta p { line-height: 1.9; }
   .editor-header { height: 68px; }
-  .editor-brand strong { display: none; }
-  .download-button { padding: 9px 12px; }
+  .home-button { padding: 8px 10px; }
+  .header-actions { gap: 6px; }
+  .download-button { padding: 9px 10px; }
   .editor-shell { height: 100dvh; min-height: 0; overflow: hidden; }
   .editor-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     direction: ltr;
     height: calc(100dvh - 68px);
     min-height: 0;
     overflow: hidden;
   }
+  .mobile-editor-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    margin: 10px 12px 0;
+    padding: 4px;
+    border: 1px solid #dce4e0;
+    border-radius: 9px;
+    background: #fff;
+    direction: rtl;
+  }
+  .mobile-editor-tabs button {
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #687772;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .mobile-editor-tabs button.active {
+    background: #e8f0ec;
+    color: #173f38;
+  }
   .form-panel, .preview-panel {
     order: initial;
     width: auto;
     min-width: 0;
+    min-height: 0;
     max-height: none;
     height: 100%;
     overflow-x: hidden;
@@ -604,6 +637,7 @@
     overscroll-behavior: contain;
     scrollbar-width: thin;
   }
+  .mobile-panel-hidden { display: none; }
   .form-panel { padding: 12px 8px 24px; }
   .form-grid, .sub-form { grid-template-columns: minmax(0, 1fr); }
   .repeatable-form-card .form-grid { grid-template-columns: 1fr; }
@@ -630,30 +664,30 @@
   .resume-item > span { display: block; margin-top: 5px; }
   .skill-list { gap: 4px; }
   .skill-list span { font-size: 6px; padding: 3px; }
-  .resume-paper:not(.template-ats) .resume-section p { font-size: 10px; }
-  .resume-paper:not(.template-ats) .summary { font-size: 10px !important; }
-  .resume-paper:not(.template-ats) .resume-section h2 { font-size: 11px; }
-  .resume-paper:not(.template-ats) .resume-item h3 { font-size: 11px; }
-  .resume-paper:not(.template-ats) .resume-item b { font-size: 9px; }
-  .resume-paper:not(.template-ats) .resume-item > span { font-size: 9px; }
-  .resume-paper:not(.template-ats) .skill-list span { font-size: 8px; }
+  .resume-paper:not(.template-ats) .resume-section p { font-size: 11px; }
+  .resume-paper:not(.template-ats) .summary { font-size: 11px !important; }
+  .resume-paper:not(.template-ats) .resume-section h2 { font-size: 13px; }
+  .resume-paper:not(.template-ats) .resume-item h3 { font-size: 13px; }
+  .resume-paper:not(.template-ats) .resume-item b,
+  .resume-paper:not(.template-ats) .resume-item > span { font-size: 10px; }
+  .resume-paper:not(.template-ats) .skill-list span { font-size: 9px; }
   .resume-paper.template-ats { min-height: 0; }
   .resume-paper.template-ats > header { height: auto; min-height: 0; padding: 12px 8px 9px; }
-  .resume-paper.template-ats > header h1 { font-size: 14px; overflow-wrap: anywhere; }
-  .resume-paper.template-ats > header p { font-size: 8px; }
-  .template-ats .resume-contact-line { gap: 3px 0; margin-top: 7px; font-size: 6px; }
+  .resume-paper.template-ats > header h1 { font-size: 18px; overflow-wrap: anywhere; }
+  .resume-paper.template-ats > header p { font-size: 10px; }
+  .template-ats .resume-contact-line { gap: 3px 0; margin-top: 7px; font-size: 9px; }
   .template-ats .resume-contact-line > span { padding-inline: 4px; overflow-wrap: anywhere; }
   .template-ats .resume-ats-content { padding: 10px 8px 14px; }
   .template-ats .resume-section { margin-bottom: 13px; }
-  .template-ats .resume-section h2 { font-size: 8px; margin-bottom: 5px; padding-bottom: 3px; }
-  .template-ats .resume-section p { font-size: 7px; line-height: 1.65; }
+  .template-ats .resume-section h2 { font-size: 11px; margin-bottom: 5px; padding-bottom: 3px; }
+  .template-ats .resume-section p { font-size: 10px; line-height: 1.65; }
   .template-ats .resume-item { display: flex; align-items: flex-start; gap: 5px; padding-bottom: 5px; }
-  .template-ats .resume-item h3 { font-size: 7px; line-height: 1.5; overflow-wrap: anywhere; }
-  .template-ats .resume-item b, .template-ats .resume-item > span { font-size: 6px; }
+  .template-ats .resume-item h3 { font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+  .template-ats .resume-item b, .template-ats .resume-item > span { font-size: 9px; }
   .template-ats .resume-item > span { display: block; flex: 0 0 auto; max-width: 34%; margin: 0; text-align: right; overflow-wrap: anywhere; }
-  .template-ats .resume-bullets { padding-inline-start: 12px; font-size: 7px; line-height: 1.6; }
-  .template-ats .skill-list { font-size: 7px; line-height: 1.6; overflow-wrap: anywhere; }
-  .template-ats .resume-project-url { font-size: 6px !important; }
+  .template-ats .resume-bullets { padding-inline-start: 12px; font-size: 9px; line-height: 1.6; }
+  .template-ats .skill-list { font-size: 9px; line-height: 1.6; overflow-wrap: anywhere; }
+  .template-ats .resume-project-url { font-size: 8px !important; }
 }
 
 @media (max-width: 370px) {

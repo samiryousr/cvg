@@ -31,6 +31,20 @@ function useEditorCopy() {
         issuer: "الجهة المانحة",
         year: "السنة أو الفترة",
         skills: "المهارات (افصل بينها بفاصلة)",
+        experienceTitle: "خبرة عملية",
+        educationTitle: "تعليم",
+        projectTitle: "مشروع",
+        certificationTitle: "شهادة مهنية",
+        remove: "حذف",
+        invalidImage: "اختار ملف صورة صالح.",
+        imageTooLarge: "حجم الصورة لازم يكون أقل من 8 ميجابايت.",
+        imageProcessingFailed: "تعذر تجهيز الصورة للمعاينة.",
+        imageFailed: "تعذر تحميل الصورة. جرّب صورة أخرى.",
+        photoAlt: "معاينة الصورة الشخصية",
+        personalPhoto: "الصورة الشخصية",
+        uploadPhoto: "رفع صورة",
+        removePhoto: "إزالة الصورة",
+        imageSavedLocally: "تُحفظ الصورة محليًا بعد تصغير حجمها.",
       }
     : {
         summary: "Professional summary",
@@ -48,6 +62,20 @@ function useEditorCopy() {
         issuer: "Issuing organization",
         year: "Year / period",
         skills: "Skills (separate with commas)",
+        experienceTitle: "Work experience",
+        educationTitle: "Education",
+        projectTitle: "Project",
+        certificationTitle: "Certification",
+        remove: "Remove",
+        invalidImage: "Choose a valid image file.",
+        imageTooLarge: "The image must be smaller than 8 MB.",
+        imageProcessingFailed: "Could not prepare the image for preview.",
+        imageFailed: "Could not upload the image. Please try another one.",
+        photoAlt: "Profile photo preview",
+        personalPhoto: "Profile photo",
+        uploadPhoto: "Upload photo",
+        removePhoto: "Remove photo",
+        imageSavedLocally: "The resized photo is saved locally.",
       }
 }
 
@@ -141,13 +169,13 @@ export const ExperienceFields = memo(function ExperienceFields({
   return (
     <article className="repeatable-form-card">
       <div className="repeatable-form-heading">
-        <strong>خبرة عملية</strong>
+        <strong>{copy.experienceTitle}</strong>
         <button
           className="remove-item-button"
           type="button"
           onClick={() => removeExperience(experience.id)}
         >
-          حذف
+          {copy.remove}
         </button>
       </div>
       <div className="form-grid" data-field-language={isArabic ? "ar" : "en"}>
@@ -212,13 +240,13 @@ export const EducationFields = memo(function EducationFields({
   return (
     <article className="repeatable-form-card">
       <div className="repeatable-form-heading">
-        <strong>تعليم</strong>
+        <strong>{copy.educationTitle}</strong>
         <button
           className="remove-item-button"
           type="button"
           onClick={() => removeEducation(education.id)}
         >
-          حذف
+          {copy.remove}
         </button>
       </div>
       <div className="form-grid" data-field-language={isArabic ? "ar" : "en"}>
@@ -270,13 +298,13 @@ export const ProjectFields = memo(function ProjectFields({
   return (
     <article className="repeatable-form-card">
       <div className="repeatable-form-heading">
-        <strong>مشروع</strong>
+        <strong>{copy.projectTitle}</strong>
         <button
           className="remove-item-button"
           type="button"
           onClick={() => removeProject(project.id)}
         >
-          حذف
+          {copy.remove}
         </button>
       </div>
       <div className="form-grid" data-field-language={isArabic ? "ar" : "en"}>
@@ -353,13 +381,13 @@ export const CertificationFields = memo(function CertificationFields({
   return (
     <article className="repeatable-form-card">
       <div className="repeatable-form-heading">
-        <strong>شهادة مهنية</strong>
+        <strong>{copy.certificationTitle}</strong>
         <button
           className="remove-item-button"
           type="button"
           onClick={() => removeCertification(certification.id)}
         >
-          حذف
+          {copy.remove}
         </button>
       </div>
       <div className="form-grid" data-field-language={isArabic ? "ar" : "en"}>
@@ -434,6 +462,7 @@ export const SkillsField = memo(function SkillsField() {
 })
 
 export const ProfilePhotoField = memo(function ProfilePhotoField() {
+  const copy = useEditorCopy()
   const photoUrl = useResumeStore((state) => state.personal.photoUrl)
 
   const updatePersonal = useResumeStore((state) => state.updatePersonal)
@@ -448,13 +477,13 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
     if (!file) return
 
     if (!file.type.startsWith("image/")) {
-      setError("اختار ملف صورة صالح.")
+      setError(copy.invalidImage)
 
       return
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      setError("حجم الصورة لازم يكون أقل من 8 ميجابايت.")
+      setError(copy.imageTooLarge)
 
       return
     }
@@ -472,7 +501,7 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
 
       const context = canvas.getContext("2d")
 
-      if (!context) throw new Error("تعذر تجهيز الصورة للمعاينة.")
+      if (!context) throw new Error(copy.imageProcessingFailed)
 
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
 
@@ -484,7 +513,7 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
     } catch (cause) {
       console.error("Could not process the uploaded resume photo.", cause)
 
-      setError("تعذر تحميل الصورة. جرّب صورة أخرى.")
+      setError(copy.imageFailed)
     }
   }
 
@@ -494,22 +523,22 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
         {photoUrl ? (
           <Image
             src={photoUrl}
-            alt="معاينة الصورة الشخصية"
+            alt={copy.photoAlt}
             width={512}
             height={512}
             unoptimized
           />
         ) : (
-          <span>الصورة الشخصية</span>
+          <span>{copy.personalPhoto}</span>
         )}
       </div>
       <label className="photo-upload-button">
-        رفع صورة
+        {copy.uploadPhoto}
         <input
           type="file"
           accept="image/*"
           onChange={handlePhotoChange}
-          aria-label="رفع صورة شخصية للسيرة الذاتية"
+          aria-label={copy.uploadPhoto}
         />
       </label>
       {photoUrl && (
@@ -518,11 +547,11 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
           type="button"
           onClick={() => updatePersonal("photoUrl", null)}
         >
-          إزالة الصورة
+          {copy.removePhoto}
         </button>
       )}
       <p className="field-message" aria-live="polite">
-        {error || "تُحفظ الصورة محليًا بعد تصغير حجمها."}
+        {error || copy.imageSavedLocally}
       </p>
     </div>
   )

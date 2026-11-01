@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react"
 import { MiniResume } from "@/components/landing/MiniResume"
 import { ThemeToggle } from "@/components/ThemeToggle"
-import { templates, type Template } from "@/features/resume-builder/model"
+import {
+  atsTemplate,
+  templates,
+  type Template,
+} from "@/features/resume-builder/model"
 
 export function LandingPage({
   onChoose,
@@ -59,7 +63,7 @@ export function LandingPage({
             <ThemeToggle />
             <button
               className="text-button"
-              onClick={() => onChoose(templates[1])}
+              onClick={() => onChoose(atsTemplate)}
             >
               أنشئ سيرتك
               <span aria-hidden="true">←</span>
@@ -88,7 +92,7 @@ export function LandingPage({
             <a href="#how" onClick={() => setMenuOpen(false)}>
               طريقة الاستخدام
             </a>
-            <button onClick={() => onChoose(templates[1])}>
+            <button onClick={() => onChoose(atsTemplate)}>
               أنشئ سيرتك مجانًا
             </button>
           </div>
@@ -111,7 +115,7 @@ export function LandingPage({
           <p>قوالب احترافية، تعديل فوري، ونتيجة تليق بخبرتك — بدون تعقيد.</p>
           <button
             className="primary-button"
-            onClick={() => onChoose(templates[1])}
+            onClick={() => onChoose(atsTemplate)}
           >
             ابدأ مجانًا
             <span aria-hidden="true">←</span>
@@ -209,7 +213,7 @@ export function LandingPage({
             </p>
             <button
               className="primary-button"
-              onClick={() => onChoose(templates[1])}
+              onClick={() => onChoose(atsTemplate)}
             >
               أنشئ سيرتك الآن
               <span aria-hidden="true">←</span>
@@ -242,7 +246,7 @@ export function LandingPage({
           <p>أنشئ سيرة ذاتية تعبّر عنك وتمنح خبراتك المساحة التي تستحقها.</p>
           <button
             className="primary-button light-button"
-            onClick={() => onChoose(templates[0])}
+            onClick={() => onChoose(atsTemplate)}
           >
             ابدأ مجانًا
             <span aria-hidden="true">←</span>
