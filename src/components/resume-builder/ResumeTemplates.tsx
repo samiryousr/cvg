@@ -113,6 +113,7 @@ function ResumeHeader({
           alt={`Photo of ${personal.name}`}
           width={512}
           height={512}
+          loading="eager"
           unoptimized
         />
       ) : showPhoto ? (
@@ -125,8 +126,10 @@ function ResumeHeader({
         </div>
       ) : null}
       <div>
-        <h1>{personal.name || "Your Name"}</h1>
-        <p style={{ color: accent }}>{personal.role || "Job Title"}</p>
+        <h1 dir="auto">{personal.name || "Your Name"}</h1>
+        <p dir="auto" style={{ color: accent }}>
+          {personal.role || "Job Title"}
+        </p>
         {!showPhoto && <ResumeContact personal={personal} />}
       </div>
     </header>
@@ -185,8 +188,10 @@ function ResumeMainSections({
   experiences,
 
   projects,
+  afterSummary,
 }: Pick<ResumeTemplateProps, "summary" | "experiences" | "projects" | "primaryColor"> & {
   accent?: string
+  afterSummary?: ReactNode
 }) {
   const sectionAccent = accent ?? "#2f6b5f"
 
@@ -197,6 +202,7 @@ function ResumeMainSections({
           <p className="summary">{summary}</p>
         </ResumeSection>
       )}
+      {afterSummary}
       {experiences.length > 0 && (
         <ResumeSection title="Professional Experience" accent={sectionAccent}>
           {experiences.map((experience) => (
@@ -380,8 +386,17 @@ export function AtsResumeTemplate(props: ResumeTemplateProps) {
         showPhoto={false}
       />
       <main className="resume-ats-content">
-        <ResumeMainSections {...props} accent="#263238" />
-        <SkillsSection {...props} accent="#263238" />
+        <ResumeMainSections
+          {...props}
+          accent="#263238"
+          afterSummary={
+            props.skills.length > 0 ? (
+              <ResumeSection title="Technical Skills" accent="#263238">
+                <p className="summary">{props.skills.join(", ")}</p>
+              </ResumeSection>
+            ) : null
+          }
+        />
         <ResumeEducationSections {...props} accent="#263238" />
       </main>
     </>

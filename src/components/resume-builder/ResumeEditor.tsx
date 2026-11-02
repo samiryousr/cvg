@@ -56,16 +56,22 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const copy = {
     saved: isArabic ? "محفوظ تلقائيًا على هذا الجهاز" : "Saved on this device",
     home: isArabic ? "العودة للرئيسية" : "Back to home",
-    downloadPdf: isArabic ? "تحميل PDF" : "Download PDF",
+    downloadPdf: isArabic ? "حفظ PDF" : "Save as PDF",
+    checkingAts: isArabic
+      ? "جارٍ فحص السيرة عبر ATS"
+      : "Checking your CV with ATS",
+    atsSimulationNote: isArabic
+      ? "محاكاة مرئية وتجهيز للتنزيل، وليست نتيجة فحص حقيقية."
+      : "A visual simulation while preparing your download, not a real ATS result.",
     completion: isArabic ? "اكتمال السيرة" : "Resume completion",
     basicInformation: isArabic ? "المعلومات الأساسية" : "Basic information",
     editHint: isArabic
-      ? "عدّل بياناتك؛ تنسيق السيرة وعناوينها بالإنجليزية دائمًا."
-      : "Edit your details; the resume is always formatted in English.",
+      ? "تنسيق السيرة وعناوينها بالإنجليزية. بيانات المعاينة نموذجية؛ استبدلها بمعلوماتك الحقيقية قبل التقديم."
+      : "The resume is formatted in English. Sample details are for preview; replace them with your own before applying.",
     template: isArabic ? "القالب" : "Template",
     atsNote: isArabic
-      ? "السيرة تُعرض بالإنجليزية. اختر لغة تسميات خانات الإدخال."
-      : "The resume is displayed in English. Choose a language for the input labels.",
+      ? "قالب احترافي أحادي العمود ومتوافق مع أنظمة ATS. السيرة بالإنجليزية؛ اختر لغة تسميات خانات الإدخال."
+      : "Professional single-column layout optimized for ATS. The resume is in English; choose a language for the input labels.",
     primaryColor: isArabic ? "اللون الأساسي" : "Primary color",
     primaryColorAria: isArabic
       ? "اختيار اللون الأساسي للقالب"
@@ -96,6 +102,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const [activeMobilePanel, setActiveMobilePanel] = useState<"form" | "preview">(
     "form",
   )
+  const [isCheckingAts, setIsCheckingAts] = useState(false)
 
   const completionFields = [
     personal.name,
@@ -140,8 +147,69 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
       100,
   )
 
+  const printResume = async () => {
+    const previousPanel = activeMobilePanel
+    const previousTitle = document.title
+    const isMobile = window.matchMedia("(max-width: 520px)").matches
+    const shouldCheckAts = templateId === "ats"
+    const safeName =
+      personal.name
+        .trim()
+        .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+        .replace(/\s+/g, "-") || "resume"
+
+    if (isMobile && previousPanel !== "preview") {
+      setActiveMobilePanel("preview")
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve())
+        })
+      })
+    }
+
+    if (shouldCheckAts) {
+      setIsCheckingAts(true)
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 2000)
+      })
+      setIsCheckingAts(false)
+    }
+
+    document.title = `CV-${safeName}`
+    try {
+      window.print()
+    } finally {
+      document.title = previousTitle
+      setIsCheckingAts(false)
+      if (isMobile && previousPanel !== "preview") {
+        setActiveMobilePanel(previousPanel)
+      }
+    }
+  }
+
   return (
     <div className="editor-shell" dir="ltr">
+      {isCheckingAts && (
+        <div className="ats-loading-overlay" role="status" aria-live="polite">
+          <div className="ats-loading-card" dir={isArabic ? "rtl" : "ltr"}>
+            <div className="ats-animation-stage" aria-hidden="true">
+              <span className="ats-scanner-gate" />
+              <span className="ats-resume-sheet">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+            </div>
+            <h2>{copy.checkingAts}</h2>
+            <p>{copy.atsSimulationNote}</p>
+            <div className="ats-progress-track" aria-hidden="true">
+              <span />
+            </div>
+          </div>
+        </div>
+      )}
       <header className="editor-header" dir="rtl">
         <button
           className="home-button"
@@ -159,7 +227,8 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           <ThemeToggle />
           <button
             className="download-button"
-            onClick={() => window.print()}
+            onClick={printResume}
+            disabled={isCheckingAts}
             type="button"
           >
             {copy.downloadPdf}

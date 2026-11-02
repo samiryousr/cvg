@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { memo, useState, type ChangeEvent } from "react"
+import { LoadingScreen } from "@/components/LoadingScreen"
 import type {
   Certification,
   Education,
@@ -38,6 +39,7 @@ function useEditorCopy() {
         remove: "حذف",
         invalidImage: "اختار ملف صورة صالح.",
         imageTooLarge: "حجم الصورة لازم يكون أقل من 8 ميجابايت.",
+        processingImage: "جارٍ تجهيز الصورة...",
         imageProcessingFailed: "تعذر تجهيز الصورة للمعاينة.",
         imageFailed: "تعذر تحميل الصورة. جرّب صورة أخرى.",
         photoAlt: "معاينة الصورة الشخصية",
@@ -69,6 +71,7 @@ function useEditorCopy() {
         remove: "Remove",
         invalidImage: "Choose a valid image file.",
         imageTooLarge: "The image must be smaller than 8 MB.",
+        processingImage: "Preparing your photo...",
         imageProcessingFailed: "Could not prepare the image for preview.",
         imageFailed: "Could not upload the image. Please try another one.",
         photoAlt: "Profile photo preview",
@@ -468,6 +471,7 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
   const updatePersonal = useResumeStore((state) => state.updatePersonal)
 
   const [error, setError] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -488,8 +492,10 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
       return
     }
 
+    setIsProcessing(true)
+    let bitmap: ImageBitmap | undefined
     try {
-      const bitmap = await createImageBitmap(file)
+      bitmap = await createImageBitmap(file)
 
       const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height))
 
@@ -505,8 +511,6 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
 
       context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
 
-      bitmap.close()
-
       updatePersonal("photoUrl", canvas.toDataURL("image/jpeg", 0.82))
 
       setError("")
@@ -514,11 +518,17 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
       console.error("Could not process the uploaded resume photo.", cause)
 
       setError(copy.imageFailed)
+    } finally {
+      bitmap?.close()
+      setIsProcessing(false)
     }
   }
 
   return (
     <div className="photo-field">
+      {isProcessing && (
+        <LoadingScreen message={copy.processingImage} overlay />
+      )}
       <div className="photo-preview">
         {photoUrl ? (
           <Image

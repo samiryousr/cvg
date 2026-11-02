@@ -40,24 +40,29 @@
   position: fixed;
   z-index: 50;
   top: 0;
-  left: 0;
+  left: 50%;
   width: 100%;
   max-width: none;
   border: 1px solid transparent;
   border-radius: 0;
   background: #fff;
   box-shadow: none;
-  transform: translateX(0);
-  transition: width .45s cubic-bezier(.22, 1, .36, 1), height .35s ease, top .45s cubic-bezier(.22, 1, .36, 1), left .45s cubic-bezier(.22, 1, .36, 1), padding .35s ease, border-radius .4s ease, background .35s ease, box-shadow .35s ease, border-color .35s ease, transform .45s cubic-bezier(.22, 1, .36, 1);
+  transform: translateX(-50%);
+  transition:
+    width .45s cubic-bezier(.22, 1, .36, 1),
+    height .35s ease,
+    top .35s cubic-bezier(.22, 1, .36, 1),
+    padding .35s ease,
+    border-radius .4s ease,
+    background .35s ease,
+    box-shadow .35s ease,
+    border-color .35s ease;
 }
 .site-header.is-scrolled {
   top: 14px;
-  left: 50%;
   width: min(80%, 1120px);
   height: 68px;
-  max-width: 1120px;
   padding: 0 24px;
-  transform: translateX(-50%);
   border-color: rgba(255, 255, 255, .88);
   border-radius: 999px;
   background:
@@ -229,6 +234,7 @@
 .light-button:hover { background: #edf5f2; color: #173f38; }
 
 .loading-screen { min-height: 100vh; display: grid; place-content: center; justify-items: center; background: #fafaf8; color: #173f38; position: relative; overflow: hidden; }
+.loading-screen-overlay { position: fixed; z-index: 2000; inset: 0; min-height: 100dvh; }
 .loading-glow { position: absolute; width: 500px; height: 500px; left: 50%; border-radius: 50%; background: rgba(59, 148, 255, .18); filter: blur(65px); top: -250px; animation: glow-breathe 1.5s ease-in-out infinite alternate; }
 .loading-brand { display: flex; align-items: center; gap: 12px; animation: fade-up .6s ease both; }
 .loading-brand span { width: 52px; height: 52px; display: grid; place-items: center; background: #173f38; color: white; border-radius: 50% 50% 50% 13px; font-size: 20px; font-weight: 800; }
@@ -351,9 +357,21 @@
   from { transform: translateX(220%); }
   to { transform: translateX(-120%); }
 }
+@keyframes ats-paper-pass {
+  from { transform: translateX(0); }
+  to { transform: translateX(180px); }
+}
+@keyframes ats-scan-line {
+  from { top: 5px; }
+  to { top: 84px; }
+}
+@keyframes ats-progress-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
 
 .editor-shell { min-height: 100vh; background: #e8ecea; }
-.editor-header { background: #fff; max-width: none; padding: 0 42px; border-bottom: 1px solid #e1e5e3; }
+.editor-header { position: relative; background: #fff; max-width: none; padding: 0 42px; border-bottom: 1px solid #e1e5e3; }
 .home-button { padding: 8px 12px; border: 1px solid #d5dcda; border-radius: 5px; background: #fff; color: #315d53; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .save-state { color: #7c8884; font-size: 11px; display: flex; align-items: center; gap: 8px; }
 .save-state span { width: 7px; height: 7px; background: #70a895; border-radius: 50%; }
@@ -365,6 +383,21 @@
 .editor-language-switch button.active { background: #e4ede8; color: #173f38; font-weight: 700; }
 .download-button { border-radius: 3px; padding: 10px 17px; font-size: 11px; font-weight: 700; }
 .download-button { background: #173f38; color: white; border: 1px solid #173f38; }
+.download-button:disabled { cursor: wait; opacity: .7; }
+.ats-loading-overlay { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15, 29, 25, .58); backdrop-filter: blur(5px); }
+.ats-loading-card { width: min(100%, 390px); padding: 25px 28px 23px; border: 1px solid #e1e9e5; border-radius: 14px; background: #fff; box-shadow: 0 24px 80px rgba(8, 24, 19, .25); text-align: center; }
+.ats-animation-stage { position: relative; width: min(100%, 300px); height: 118px; margin: 0 auto 13px; overflow: hidden; border: 1px solid #e8eeeb; border-radius: 9px; background: linear-gradient(180deg, #f8fbf9, #eef4f1); }
+.ats-scanner-gate { position: absolute; z-index: 1; top: 9px; bottom: 9px; left: 64%; width: 3px; border-radius: 3px; background: #4a9a7b; box-shadow: 0 0 0 5px rgba(74, 154, 123, .1), 0 0 18px rgba(74, 154, 123, .6); }
+.ats-resume-sheet { position: absolute; top: 11px; left: calc(50% - 138px); display: flex; width: 73px; height: 94px; flex-direction: column; gap: 7px; padding: 14px 9px; border: 1px solid #dfe7e3; border-radius: 4px; background: #fff; box-shadow: 0 5px 12px rgba(34, 69, 56, .12); animation: ats-paper-pass 2s cubic-bezier(.45, 0, .35, 1) forwards; }
+.ats-resume-sheet::after { position: absolute; top: 5px; right: 0; left: 0; height: 2px; background: #e36d54; box-shadow: 0 0 8px rgba(227, 109, 84, .75); content: ""; animation: ats-scan-line 1.4s ease-in-out infinite alternate; }
+.ats-resume-sheet i { display: block; width: 100%; height: 3px; border-radius: 4px; background: #dce5e0; }
+.ats-resume-sheet i:first-child { width: 62%; height: 6px; background: #507c6d; }
+.ats-resume-sheet i:nth-child(3) { width: 82%; }
+.ats-resume-sheet i:last-child { width: 68%; }
+.ats-loading-card h2 { margin: 0; color: #203d33; font-size: 17px; font-weight: 800; }
+.ats-loading-card p { margin: 7px 0 17px; color: #728078; font-size: 11px; line-height: 1.8; }
+.ats-progress-track { height: 5px; overflow: hidden; border-radius: 9px; background: #e8efeb; }
+.ats-progress-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2f6b5f, #79b99a); animation: ats-progress-fill 2s ease-out forwards; }
 .editor-layout { display: grid; grid-template-columns: minmax(400px, 42%) 1fr; min-height: calc(100vh - 78px); }
 .form-panel { background: #fff; padding: 30px 44px 60px; overflow-y: auto; max-height: calc(100vh - 78px); border-right: 1px solid #dce2df; }
 .progress-row { display: flex; justify-content: space-between; font-size: 10px; color: #7c8985; }
@@ -492,7 +525,7 @@
 @media (max-width: 850px) {
   .site-header-slot { height: 78px; }
   .site-header { padding-inline: 18px; }
-  .site-header.is-scrolled { top: 10px; left: 12px; width: calc(100% - 24px); padding-inline: 17px; transform: translateX(0); }
+  .site-header.is-scrolled { top: 10px; width: calc(100% - 24px); padding-inline: 17px; }
   .site-header nav { display: none; }
   .site-header-actions { position: absolute; left: 62px; }
   .site-header-actions > .text-button { display: none; }
@@ -707,18 +740,39 @@
 }
 
 @media print {
-  @page { size: A4; margin: 12mm; }
-  html, body { width: auto; min-height: 0; margin: 0 !important; background: #fff !important; }
+  @page { size: A4; margin: 0; }
+  html, body, .app-theme, .app-theme.theme-dark {
+    width: auto;
+    min-height: 0;
+    margin: 0 !important;
+    background: #fff !important;
+    color: #293a36 !important;
+    color-scheme: light;
+  }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .editor-shell, .editor-layout { display: block; min-height: 0; background: #fff !important; }
+  .ats-loading-overlay { display: none !important; }
+  .editor-shell, .editor-layout, .preview-panel {
+    display: block;
+    width: 210mm;
+    height: auto;
+    min-height: 0;
+    margin: 0 auto;
+    overflow: visible;
+    background: #fff !important;
+    color: #293a36 !important;
+    color-scheme: light;
+  }
+  .mobile-editor-tabs { display: none !important; }
   .editor-header, .form-panel, .preview-toolbar, .preview-hint { display: none !important; }
-  .preview-panel { width: auto; max-height: none; padding: 0; overflow: visible; }
-  .resume-paper { width: auto; min-height: 0; margin: 0; overflow: visible; border: 0 !important; box-shadow: none; break-after: auto; }
+  .preview-panel, .preview-panel.mobile-panel-hidden { display: block !important; width: 210mm; height: auto; min-height: 0; max-height: none; margin: 0; padding: 10mm !important; overflow: visible; background: #fff !important; box-sizing: border-box; }
+  .resume-paper { width: 100%; min-height: 0; margin: 0; overflow: visible; border: 0 !important; box-shadow: none; break-after: auto; box-sizing: border-box; }
   .resume-paper > header { height: auto; min-height: 35mm; padding: 8mm 4mm; }
   .resume-monogram, .resume-photo { width: 22mm; height: 22mm; font-size: 18pt; }
   .resume-paper > header h1 { font-size: 22pt; }
   .resume-paper > header p { font-size: 11pt; }
   .resume-content { min-height: 0; }
+  .resume-paper.template-modern .resume-content { grid-template-columns: 31% 69%; }
+  .resume-item { display: flex; }
   .resume-content > aside { padding: 12mm 8mm; }
   .resume-content > main { padding: 12mm 11mm; }
   .resume-section { margin-bottom: 8mm; }
@@ -734,19 +788,23 @@
   .resume-paper.template-classic .resume-content > main { padding: 10mm 15mm; }
   .template-minimalist .resume-content > main { padding: 8mm 4mm; }
   .template-ats { font-family: Arial, Helvetica, sans-serif; }
-  .template-ats > header { min-height: 0; padding: 0 0 6mm; border-bottom: 1px solid #aeb8bb; }
-  .template-ats > header h1 { font-size: 20pt; }
-  .template-ats > header p { font-size: 10pt; }
-  .resume-contact-line { gap: 2mm 5mm; margin-top: 3mm; font-size: 8.5pt; }
-  .resume-ats-content { padding: 6mm 0 0; }
-  .template-ats .resume-section { margin-bottom: 6mm; }
-  .template-ats .resume-section h2 { font-size: 10pt; }
-  .template-ats .resume-section p { font-size: 9pt; }
-  .template-ats .resume-item h3 { font-size: 9.5pt; }
-  .template-ats .resume-item b, .template-ats .resume-item > span { font-size: 8.5pt; }
-  .template-ats .skill-list { font-size: 9pt; }
+  .template-ats > header { min-height: 0; padding: 0 0 3mm; border-bottom: 1px solid #aeb8bb; }
+  .template-ats > header h1 { font-size: 22pt; }
+  .template-ats > header p { margin-top: 1.5mm; font-size: 10pt; }
+  .resume-contact-line { gap: 1mm 4mm; margin-top: 2.5mm; font-size: 8pt; }
+  .resume-ats-content { padding: 4mm 0 0; }
+  .template-ats .resume-section { margin-bottom: 4mm; }
+  .template-ats .resume-section h2 { margin-bottom: 2mm; padding-bottom: 1mm; font-size: 9pt; }
+  .template-ats .resume-section p { font-size: 8.5pt; line-height: 1.5; }
+  .template-ats .resume-item { gap: 3mm; padding-bottom: 1.5mm; }
+  .template-ats .resume-item h3 { margin-bottom: 1mm; font-size: 9pt; line-height: 1.4; }
+  .template-ats .resume-item b, .template-ats .resume-item > span { font-size: 8pt; }
+  .template-ats .resume-bullets { margin-top: 1mm; font-size: 8.5pt; line-height: 1.45; }
+  .template-ats .resume-bullets li { margin-bottom: 0.5mm; }
+  .template-ats .resume-project-stack { margin-top: 0; }
+  .template-ats .skill-list { font-size: 8.5pt; line-height: 1.5; }
   .template-ats .resume-section h2 { break-after: avoid-page; }
   .template-ats .resume-item { break-inside: avoid; }
-  .template-ats .resume-bullets { font-size: 9pt; line-height: 1.65; }
-  .template-ats .resume-project-url { font-size: 8.5pt !important; }
+  .template-ats .resume-bullets { font-size: 8.5pt; line-height: 1.45; }
+  .template-ats .resume-project-url { font-size: 8pt !important; }
 }

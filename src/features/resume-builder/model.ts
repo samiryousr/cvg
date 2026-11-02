@@ -78,9 +78,10 @@ export type Certification = {
 
 export const atsTemplate: Template = {
   id: "ats",
-  name: "متوافق مع ATS",
-  tone: "مهيأ للفحص الآلي",
-  description: "تخطيط أحادي العمود بلا صور أو جداول.",
+  name: "احترافي",
+  tone: "متوافق مع أنظمة ATS",
+  description:
+    "تخطيط واضح أحادي العمود يسهل قراءته على مسؤولي التوظيف وأنظمة ATS.",
   accent: "#263238",
   atsOptimized: true,
 }
@@ -90,21 +91,21 @@ export const templates: Template[] = [
     id: "modern",
     name: "عصري",
     tone: "أنيق ومعاصر",
-    description: "تصميم أنيق بعمود جانبي ولمسات لونية.",
+    description: "عمود جانبي منظم ولمسات لونية تبرز المهارات ومعلومات التواصل.",
     accent: "#2f6b5f",
   },
   {
     id: "classic",
     name: "كلاسيكي",
     tone: "واضح وتقليدي",
-    description: "تخطيط تقليدي واضح وسهل القراءة.",
+    description: "تخطيط مألوف ومتوازن مناسب لمختلف المجالات ومستويات الخبرة.",
     accent: "#343b45",
   },
   {
     id: "minimalist",
     name: "بسيط",
     tone: "هادئ ومختصر",
-    description: "مساحات مريحة وتركيز على المحتوى.",
+    description: "تصميم نظيف ومساحات مريحة تضع الخبرات والإنجازات في المقدمة.",
     accent: "#6b6258",
   },
   atsTemplate,
@@ -130,7 +131,7 @@ export const initialResume = {
   } satisfies PersonalInfo,
 
   summary:
-    "Frontend engineer with 7+ years of experience building scalable web applications. Improved user engagement by 32% through accessible, performance-focused interfaces and data-informed product decisions.",
+    "Senior Frontend Engineer with 7+ years of experience building accessible, high-performing web applications with React, Next.js, and TypeScript. Led product and platform improvements that reduced page load time by 40%, increased conversion by 12%, and established reusable UI standards across six teams.",
 
   experiences: [
     {
@@ -140,10 +141,22 @@ export const initialResume = {
 
       company: "Nawa Technology",
 
-      period: "2021 — الآن",
+      period: "May 2021 — Present",
 
       description:
-        "Led the migration of a high-traffic application to Next.js, reducing page load time by 40%.\nBuilt a shared component system used by 6 product teams.\nImproved accessibility scores from 71 to 96.",
+        "Led the migration of a high-traffic customer platform to Next.js, reducing page load time by 40% and improving Core Web Vitals.\nBuilt and documented a shared component library adopted by 6 product teams, reducing duplicated UI work.\nRaised accessibility audit scores from 71 to 96 by addressing keyboard navigation, semantics, and contrast.\nPartnered with product, design, and backend teams to ship features from discovery through production.",
+    },
+    {
+      id: "experience-2",
+
+      job: "Frontend Engineer",
+
+      company: "BrightWare",
+
+      period: "Jan 2018 — Apr 2021",
+
+      description:
+        "Delivered responsive React features for customer-facing products used by more than 80,000 monthly users.\nReduced JavaScript bundle size by 28% through route-based code splitting and dependency optimization.\nExpanded automated test coverage from 45% to 82% using Jest and React Testing Library.\nWorked with design and analytics teams on experiments that improved checkout conversion by 12%.",
     },
   ] satisfies Experience[],
 
@@ -151,15 +164,34 @@ export const initialResume = {
     {
       id: "education-1",
 
-      degree: "M.Sc. in Computer Science",
+      degree: "B.Sc. in Computer Science",
 
       school: "Cairo University",
 
-      period: "2018",
+      period: "2014 — 2018",
     },
   ] satisfies Education[],
 
-  projects: [] as Project[],
+  projects: [
+    {
+      id: "project-1",
+      name: "Customer Portal Performance Upgrade",
+      stack: "Next.js, React, TypeScript, Web Vitals",
+      period: "2024",
+      description:
+        "Refactored key customer journeys and introduced route-level code splitting, reducing largest contentful paint by 40%.\nImproved keyboard navigation and semantic markup to meet WCAG accessibility guidelines.",
+      url: "",
+    },
+    {
+      id: "project-2",
+      name: "Reusable UI Component Library",
+      stack: "React, TypeScript, Storybook, Jest",
+      period: "2022 — 2023",
+      description:
+        "Created accessible, documented components and usage patterns adopted by 6 product teams.\nAdded visual examples and unit tests to improve consistency and reduce regressions.",
+      url: "",
+    },
+  ] satisfies Project[],
 
   certifications: [] as Certification[],
 
