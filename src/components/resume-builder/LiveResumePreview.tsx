@@ -3,13 +3,10 @@
 import { memo } from "react"
 
 import { useResumeStore } from "@/features/resume-builder/store"
-
 import {
-  AtsResumeTemplate,
-  ClassicResumeTemplate,
-  MinimalistResumeTemplate,
-  ModernResumeTemplate,
-} from "@/components/resume-builder/ResumeTemplates"
+  getTemplateDefinition,
+  normalizeTemplateId,
+} from "@/features/resume-builder/template-registry"
 
 export const LiveResumePreview = memo(function LiveResumePreview() {
   const personal = useResumeStore((state) => state.personal)
@@ -26,9 +23,31 @@ export const LiveResumePreview = memo(function LiveResumePreview() {
 
   const skills = useResumeStore((state) => state.skills)
 
+  const languages = useResumeStore((state) => state.languages)
+
+  const awards = useResumeStore((state) => state.awards)
+
+  const volunteerExperiences = useResumeStore(
+    (state) => state.volunteerExperiences,
+  )
+
+  const publications = useResumeStore((state) => state.publications)
+
+  const references = useResumeStore((state) => state.references)
+
+  const customSections = useResumeStore((state) => state.customSections)
+
+  const sectionLayout = useResumeStore((state) => state.sectionLayout)
+
   const templateId = useResumeStore((state) => state.templateId)
 
+  const documentLanguage = useResumeStore((state) => state.documentLanguage)
+
   const primaryColor = useResumeStore((state) => state.primaryColor)
+
+  const safeTemplateId = normalizeTemplateId(templateId, "ats")
+  const templateDefinition = getTemplateDefinition(safeTemplateId)
+  const TemplateRenderer = templateDefinition.component
 
   const templateProps = {
     personal,
@@ -45,26 +64,32 @@ export const LiveResumePreview = memo(function LiveResumePreview() {
 
     skills,
 
+    languages,
+
+    awards,
+
+    volunteerExperiences,
+
+    publications,
+
+    references,
+
+    customSections,
+
+    sectionLayout,
+
     primaryColor,
+
+    documentLanguage,
   }
-
-  const content = {
-    modern: <ModernResumeTemplate {...templateProps} />,
-
-    classic: <ClassicResumeTemplate {...templateProps} />,
-
-    minimalist: <MinimalistResumeTemplate {...templateProps} />,
-
-    ats: <AtsResumeTemplate {...templateProps} />,
-  }[templateId]
 
   return (
     <article
-      className={`resume-paper template-${templateId}`}
-      lang="en"
-      dir="ltr"
+      className={`resume-paper template-${safeTemplateId}`}
+      lang={documentLanguage}
+      dir={documentLanguage === "ar" ? "rtl" : "ltr"}
     >
-      {content}
+      <TemplateRenderer {...templateProps} />
     </article>
   )
 })

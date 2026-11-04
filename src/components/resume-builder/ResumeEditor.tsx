@@ -1,19 +1,19 @@
 "use client"
 
-import { useState } from "react"
-import { templates } from "@/features/resume-builder/model"
+import { useEffect, useRef, useState } from "react"
 import { useResumeStore } from "@/features/resume-builder/store"
 import {
-  EducationFields,
-  ExperienceFields,
-  ProjectFields,
-  CertificationFields,
+  getTemplateDefinition,
+  normalizeTemplateId,
+  templateRegistryEntries,
+} from "@/features/resume-builder/template-registry"
+import {
   ProfilePhotoField,
-  SkillsField,
   SummaryField,
   TextField,
 } from "@/components/resume-builder/ResumeEditorFields"
 import { LiveResumePreview } from "@/components/resume-builder/LiveResumePreview"
+import { ResumeSectionManager } from "@/components/resume-builder/ResumeSectionManager"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 export function ResumeEditor({ onBack }: { onBack: () => void }) {
@@ -31,30 +31,80 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
   const skills = useResumeStore((state) => state.skills)
 
+  const languages = useResumeStore((state) => state.languages)
+
+  const awards = useResumeStore((state) => state.awards)
+
+  const volunteerExperiences = useResumeStore(
+    (state) => state.volunteerExperiences,
+  )
+
+  const publications = useResumeStore((state) => state.publications)
+
+  const references = useResumeStore((state) => state.references)
+
+  const customSections = useResumeStore((state) => state.customSections)
+
   const templateId = useResumeStore((state) => state.templateId)
 
   const editorLanguage = useResumeStore((state) => state.editorLanguage)
 
   const isArabic = editorLanguage === "ar"
 
+  const documentLanguage = useResumeStore((state) => state.documentLanguage)
+
+  const templateDefinition = getTemplateDefinition(templateId)
+
   const primaryColor = useResumeStore((state) => state.primaryColor)
-
-  const addExperience = useResumeStore((state) => state.addExperience)
-
-  const addEducation = useResumeStore((state) => state.addEducation)
-
-  const addProject = useResumeStore((state) => state.addProject)
-
-  const addCertification = useResumeStore((state) => state.addCertification)
 
   const setTemplate = useResumeStore((state) => state.setTemplate)
 
   const setEditorLanguage = useResumeStore((state) => state.setEditorLanguage)
 
+  const setDocumentLanguage = useResumeStore(
+    (state) => state.setDocumentLanguage,
+  )
+
   const setPrimaryColor = useResumeStore((state) => state.setPrimaryColor)
+
+  const [isSaving, setIsSaving] = useState(false)
+  const hasMounted = useRef(false)
+
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true
+      return
+    }
+
+    setIsSaving(true)
+    const timer = window.setTimeout(() => setIsSaving(false), 450)
+    return () => window.clearTimeout(timer)
+  }, [
+    personal,
+    summary,
+    experiences,
+    education,
+    projects,
+    certifications,
+    skills,
+    languages,
+    awards,
+    volunteerExperiences,
+    publications,
+    references,
+    customSections,
+    templateId,
+    documentLanguage,
+    primaryColor,
+  ])
 
   const copy = {
     saved: isArabic ? "محفوظ تلقائيًا على هذا الجهاز" : "Saved on this device",
+    saving: isArabic ? "جارٍ حفظ التغييرات..." : "Saving changes...",
+    savedChanges: isArabic
+      ? "تم حفظ التغييرات على هذا الجهاز"
+      : "Changes saved on this device",
+    newResume: isArabic ? "سيرة ذاتية جديدة" : "Untitled resume",
     home: isArabic ? "العودة للرئيسية" : "Back to home",
     downloadPdf: isArabic ? "حفظ PDF" : "Save as PDF",
     checkingAts: isArabic
@@ -66,12 +116,14 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     completion: isArabic ? "اكتمال السيرة" : "Resume completion",
     basicInformation: isArabic ? "المعلومات الأساسية" : "Basic information",
     editHint: isArabic
-      ? "تنسيق السيرة وعناوينها بالإنجليزية. بيانات المعاينة نموذجية؛ استبدلها بمعلوماتك الحقيقية قبل التقديم."
-      : "The resume is formatted in English. Sample details are for preview; replace them with your own before applying.",
+      ? "أضف بياناتك واختر لغة السيرة من الإعدادات؛ ستظهر تعديلاتك مباشرة في المعاينة."
+      : "Add your information and choose the resume language in settings. Changes appear in the preview as you edit.",
     template: isArabic ? "القالب" : "Template",
+    documentLanguage: isArabic ? "لغة السيرة الذاتية" : "Resume language",
+    portfolio: isArabic ? "رابط الموقع أو الأعمال" : "Portfolio URL",
     atsNote: isArabic
-      ? "قالب احترافي أحادي العمود ومتوافق مع أنظمة ATS. السيرة بالإنجليزية؛ اختر لغة تسميات خانات الإدخال."
-      : "Professional single-column layout optimized for ATS. The resume is in English; choose a language for the input labels.",
+      ? "قالب أحادي العمود بتنسيق واضح. لغة السيرة مستقلة عن لغة خانات الإدخال."
+      : "A clear single-column layout. Resume language is independent from input labels.",
     primaryColor: isArabic ? "اللون الأساسي" : "Primary color",
     primaryColorAria: isArabic
       ? "اختيار اللون الأساسي للقالب"
@@ -82,9 +134,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     projects: isArabic ? "المشاريع" : "Projects",
     certifications: isArabic ? "الشهادات" : "Certifications",
     addExperience: isArabic ? "+ إضافة خبرة" : "+ Add experience",
-    addEducation: isArabic
-      ? "+ إضافة مؤهل تعليمي"
-      : "+ Add education",
+    addEducation: isArabic ? "+ إضافة مؤهل تعليمي" : "+ Add education",
     addProject: isArabic ? "+ إضافة مشروع" : "+ Add project",
     addCertification: isArabic ? "+ إضافة شهادة" : "+ Add certification",
     livePreview: isArabic ? "معاينة مباشرة" : "Live preview",
@@ -98,10 +148,8 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     preview: isArabic ? "المعاينة" : "Preview",
   }
 
-  const [activeSection, setActiveSection] = useState("personal")
-  const [activeMobilePanel, setActiveMobilePanel] = useState<"form" | "preview">(
-    "form",
-  )
+  const [activeMobilePanel, setActiveMobilePanel] =
+    useState<"form" | "preview">("form")
   const [isCheckingAts, setIsCheckingAts] = useState(false)
 
   const completionFields = [
@@ -138,6 +186,50 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
     ...certifications.flatMap((item) => [item.name, item.issuer, item.period]),
 
+    ...languages.flatMap((item) => [item.name, item.proficiency]),
+
+    ...awards.flatMap((item) => [
+      item.title,
+      item.issuer,
+      item.date,
+      item.description,
+    ]),
+
+    ...volunteerExperiences.flatMap((item) => [
+      item.organization,
+      item.role,
+      item.startDate,
+      item.endDate,
+      item.description,
+    ]),
+
+    ...publications.flatMap((item) => [
+      item.title,
+      item.publisher,
+      item.date,
+      item.url,
+      item.description,
+    ]),
+
+    ...references.flatMap((item) => [
+      item.name,
+      item.position,
+      item.organization,
+      item.email,
+      item.phone,
+    ]),
+
+    ...customSections.flatMap((section) => [
+      section.title,
+      ...section.entries.flatMap((entry) => [
+        entry.title,
+        entry.subtitle,
+        entry.date,
+        entry.description,
+        ...entry.fields.flatMap((field) => [field.label, field.value]),
+      ]),
+    ]),
+
     ...skills,
   ]
 
@@ -151,7 +243,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     const previousPanel = activeMobilePanel
     const previousTitle = document.title
     const isMobile = window.matchMedia("(max-width: 520px)").matches
-    const shouldCheckAts = templateId === "ats"
+    const shouldCheckAts = templateDefinition.atsOptimized === true
     const safeName =
       personal.name
         .trim()
@@ -210,18 +302,62 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       )}
-      <header className="editor-header" dir="rtl">
-        <button
-          className="home-button"
-          type="button"
-          onClick={onBack}
-          aria-label={copy.home}
-        >
-          {copy.home}
-        </button>
-        <div className="save-state">
-          <span />
-          {copy.saved}
+      <header className="editor-header" dir="ltr">
+        <div className="editor-header-identity">
+          <button
+            className="home-button"
+            type="button"
+            onClick={onBack}
+            aria-label={copy.home}
+          >
+            {copy.home}
+          </button>
+          <div className="editor-document-title" dir={isArabic ? "rtl" : "ltr"}>
+            <strong>{personal.name.trim() || copy.newResume}</strong>
+            <span
+              className={`save-state${isSaving ? " saving" : ""}`}
+              role="status"
+              aria-live="polite"
+            >
+              <span />
+              {isSaving
+                ? copy.saving
+                : hasMounted.current
+                  ? copy.savedChanges
+                  : copy.saved}
+            </span>
+          </div>
+        </div>
+        <div className="editor-toolbar-selects" dir={isArabic ? "rtl" : "ltr"}>
+          <label className="toolbar-select">
+            <span>{copy.template}</span>
+            <select
+              value={templateId}
+              onChange={(event) =>
+                setTemplate(normalizeTemplateId(event.target.value, "ats"))
+              }
+              aria-label={copy.template}
+            >
+              {templateRegistryEntries.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="toolbar-select">
+            <span>{copy.documentLanguage}</span>
+            <select
+              value={documentLanguage}
+              onChange={(event) =>
+                setDocumentLanguage(event.target.value === "ar" ? "ar" : "en")
+              }
+              aria-label={copy.documentLanguage}
+            >
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </select>
+          </label>
         </div>
         <div className="header-actions">
           <ThemeToggle />
@@ -267,7 +403,9 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
         </div>
         <aside
           id="editor-form-panel"
-          className={`form-panel${activeMobilePanel === "form" ? "" : " mobile-panel-hidden"}`}
+          className={`form-panel${
+            activeMobilePanel === "form" ? "" : " mobile-panel-hidden"
+          }`}
           dir={isArabic ? "rtl" : "ltr"}
           role="tabpanel"
           aria-labelledby="mobile-form-tab"
@@ -321,27 +459,10 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           </div>
 
           <section className="editor-settings" aria-label={copy.template}>
-            <fieldset>
-              <legend>{copy.template}</legend>
-              <div className="template-switcher">
-                {templates.map((template) => (
-                  <button
-                    className={templateId === template.id ? "active" : ""}
-                    key={template.id}
-                    type="button"
-                    aria-pressed={templateId === template.id}
-                    onClick={() => setTemplate(template.id)}
-                  >
-                    <span>{template.name}</span>
-                    <small>{template.tone}</small>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            {templateId === "ats" && (
+            {templateDefinition.atsOptimized && (
               <p className="template-note">{copy.atsNote}</p>
             )}
-            {templateId !== "ats" && (
+            {templateDefinition.supportsColor && (
               <label className="color-field">
                 <span>{copy.primaryColor}</span>
                 <input
@@ -352,7 +473,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
                 />
               </label>
             )}
-            {templateId !== "ats" && <ProfilePhotoField />}
+            {templateDefinition.supportsPhoto && <ProfilePhotoField />}
           </section>
 
           <div
@@ -387,7 +508,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
               field="location"
               wide
             />
-            {templateId === "ats" && (
+            {templateDefinition.supportsProfessionalLinks && (
               <>
                 <TextField
                   labelAr="رابط GitHub"
@@ -401,106 +522,25 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
                   field="linkedIn"
                   wide
                 />
+                <TextField
+                  labelAr="رابط الموقع أو الأعمال"
+                  labelEn={copy.portfolio}
+                  field="portfolio"
+                  wide
+                />
               </>
             )}
             <SummaryField />
           </div>
 
-          <div className="section-tabs">
-            {[
-              ["experience", "02", copy.experience],
-
-              ["education", "03", copy.education],
-
-              ["skills", "04", copy.skills],
-
-              ["projects", "05", copy.projects],
-
-              ["certifications", "06", copy.certifications],
-            ].map(([id, number, label]) => (
-              <button
-                key={id}
-                className={activeSection === id ? "active" : ""}
-                onClick={() => setActiveSection(activeSection === id ? "" : id)}
-                type="button"
-                aria-expanded={activeSection === id}
-              >
-                <span>{number}</span>
-                {label}
-                <b>{activeSection === id ? "−" : "+"}</b>
-              </button>
-            ))}
-          </div>
-
-          {activeSection === "experience" && (
-            <div className="sub-form">
-              {experiences.map((experience) => (
-                <ExperienceFields key={experience.id} experience={experience} />
-              ))}
-              <button
-                className="add-item-button"
-                onClick={addExperience}
-                type="button"
-              >
-                {copy.addExperience}
-              </button>
-            </div>
-          )}
-          {activeSection === "education" && (
-            <div className="sub-form">
-              {education.map((item) => (
-                <EducationFields key={item.id} education={item} />
-              ))}
-              <button
-                className="add-item-button"
-                onClick={addEducation}
-                type="button"
-              >
-                {copy.addEducation}
-              </button>
-            </div>
-          )}
-          {activeSection === "skills" && (
-            <div className="sub-form">
-              <SkillsField />
-            </div>
-          )}
-          {activeSection === "projects" && (
-            <div className="sub-form">
-              {projects.map((project) => (
-                <ProjectFields key={project.id} project={project} />
-              ))}
-              <button
-                className="add-item-button"
-                onClick={addProject}
-                type="button"
-              >
-                {copy.addProject}
-              </button>
-            </div>
-          )}
-          {activeSection === "certifications" && (
-            <div className="sub-form">
-              {certifications.map((certification) => (
-                <CertificationFields
-                  key={certification.id}
-                  certification={certification}
-                />
-              ))}
-              <button
-                className="add-item-button"
-                onClick={addCertification}
-                type="button"
-              >
-                {copy.addCertification}
-              </button>
-            </div>
-          )}
+          <ResumeSectionManager />
         </aside>
 
         <main
           id="editor-preview-panel"
-          className={`preview-panel${activeMobilePanel === "preview" ? "" : " mobile-panel-hidden"}`}
+          className={`preview-panel${
+            activeMobilePanel === "preview" ? "" : " mobile-panel-hidden"
+          }`}
           dir="ltr"
           role="tabpanel"
           aria-labelledby="mobile-preview-tab"

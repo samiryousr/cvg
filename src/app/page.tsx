@@ -4,14 +4,12 @@ import { useEffect, useState } from "react"
 import { LandingPage } from "@/components/landing/LandingPage"
 import { ResumeEditor } from "@/components/resume-builder/ResumeEditor"
 import { LoadingScreen } from "@/components/LoadingScreen"
-import { templates } from "@/features/resume-builder/model"
+import type { TemplateId } from "@/features/resume-builder/model"
 import { useResumeStore } from "@/features/resume-builder/store"
 
 export default function App() {
   const [isEditing, setIsEditing] = useState(false)
-  const [loadingMessage, setLoadingMessage] = useState(
-    "نجهّز لك تجربة أفضل...",
-  )
+  const [loadingMessage, setLoadingMessage] = useState("نجهّز لك تجربة أفضل...")
   const [isTransitioning, setIsTransitioning] = useState(false)
   const setTemplate = useResumeStore((state) => state.setTemplate)
   const hasHydrated = useResumeStore((state) => state.hasHydrated)
@@ -24,7 +22,7 @@ export default function App() {
   const transitionTo = async (
     editing: boolean,
     message: string,
-    templateId?: (typeof templates)[number]["id"],
+    templateId?: TemplateId,
   ) => {
     setLoadingMessage(message)
     setIsTransitioning(true)
@@ -55,11 +53,7 @@ export default function App() {
       ) : (
         <LandingPage
           onChoose={(template) =>
-            void transitionTo(
-              true,
-              "جارٍ تجهيز محرر السيرة...",
-              template.id,
-            )
+            void transitionTo(true, "جارٍ تجهيز محرر السيرة...", template.id)
           }
         />
       )}

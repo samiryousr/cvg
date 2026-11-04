@@ -37,6 +37,31 @@ function useEditorCopy() {
         projectTitle: "مشروع",
         certificationTitle: "شهادة مهنية",
         remove: "حذف",
+        fullNamePlaceholder: "مثال: سارة أحمد",
+        rolePlaceholder: "مثال: مهندسة برمجيات",
+        emailPlaceholder: "name@example.com",
+        phonePlaceholder: "مثال: +20 100 123 4567",
+        locationPlaceholder: "مثال: القاهرة، مصر",
+        githubPlaceholder: "https://github.com/username",
+        linkedInPlaceholder: "https://linkedin.com/in/username",
+        portfolioPlaceholder: "https://example.com",
+        summaryGuidance:
+          "اكتبي نبذة من ٢–٤ جمل: خبرتك، تخصصك، وأبرز قيمة تضيفينها. استخدمي أرقامًا حقيقية فقط.",
+        summaryPlaceholder:
+          "مثال: مهندسة برمجيات متخصصة في تطوير تطبيقات الويب، مع خبرة في بناء واجهات سهلة الاستخدام...",
+        experienceGuidance:
+          "ابدأ بالفعل والنتيجة. فرّق بين مسؤولياتك وما أنجزته، واذكر أرقامًا قابلة للتحقق عند توفرها.",
+        achievementPlaceholder:
+          "مثال: حسّنت سرعة تحميل الصفحات عبر تقليل حجم الملفات...",
+        degreePlaceholder: "مثال: بكالوريوس علوم الحاسب",
+        schoolPlaceholder: "مثال: جامعة القاهرة",
+        projectPlaceholder: "مثال: منصة إدارة المهام",
+        stackPlaceholder: "مثال: React, TypeScript, Node.js",
+        projectDetailsPlaceholder:
+          "ما المشكلة التي حللتها؟ ما دورك؟ وما النتيجة؟",
+        urlPlaceholder: "https://example.com",
+        optional: "اختياري",
+        required: "مطلوب",
         invalidImage: "اختار ملف صورة صالح.",
         imageTooLarge: "حجم الصورة لازم يكون أقل من 8 ميجابايت.",
         processingImage: "جارٍ تجهيز الصورة...",
@@ -69,6 +94,31 @@ function useEditorCopy() {
         projectTitle: "Project",
         certificationTitle: "Certification",
         remove: "Remove",
+        fullNamePlaceholder: "Example: Sara Ahmed",
+        rolePlaceholder: "Example: Software Engineer",
+        emailPlaceholder: "name@example.com",
+        phonePlaceholder: "Example: +1 555 123 4567",
+        locationPlaceholder: "Example: Cairo, Egypt",
+        githubPlaceholder: "https://github.com/username",
+        linkedInPlaceholder: "https://linkedin.com/in/username",
+        portfolioPlaceholder: "https://example.com",
+        summaryGuidance:
+          "Write 2–4 sentences covering your focus, experience, and value. Use numbers only when they are accurate.",
+        summaryPlaceholder:
+          "Example: Software engineer focused on building accessible web applications...",
+        experienceGuidance:
+          "Lead with the action and result. Separate responsibilities from achievements and include real metrics when available.",
+        achievementPlaceholder:
+          "Example: Improved page load time by optimizing image delivery...",
+        degreePlaceholder: "Example: B.Sc. Computer Science",
+        schoolPlaceholder: "Example: Cairo University",
+        projectPlaceholder: "Example: Task management platform",
+        stackPlaceholder: "Example: React, TypeScript, Node.js",
+        projectDetailsPlaceholder:
+          "What problem did you solve, what was your role, and what changed?",
+        urlPlaceholder: "https://example.com",
+        optional: "Optional",
+        required: "Required",
         invalidImage: "Choose a valid image file.",
         imageTooLarge: "The image must be smaller than 8 MB.",
         processingImage: "Preparing your photo...",
@@ -98,6 +148,7 @@ export const TextField = memo(function TextField({
 
   wide?: boolean
 }) {
+  const copy = useEditorCopy()
   const value = useResumeStore((state) => state.personal[field])
 
   const updatePersonal = useResumeStore((state) => state.updatePersonal)
@@ -107,9 +158,19 @@ export const TextField = memo(function TextField({
       ? "email"
       : field === "phone"
         ? "tel"
-        : field === "github" || field === "linkedIn"
+        : field === "github" || field === "linkedIn" || field === "portfolio"
           ? "url"
           : "text"
+  const placeholders: Record<typeof field, string> = {
+    name: copy.fullNamePlaceholder,
+    role: copy.rolePlaceholder,
+    email: copy.emailPlaceholder,
+    phone: copy.phonePlaceholder,
+    location: copy.locationPlaceholder,
+    github: copy.githubPlaceholder,
+    linkedIn: copy.linkedInPlaceholder,
+    portfolio: copy.portfolioPlaceholder,
+  }
 
   return (
     <label
@@ -117,12 +178,16 @@ export const TextField = memo(function TextField({
         isArabic ? "" : "field-label-en"
       }`}
     >
-      <span>{isArabic ? labelAr : labelEn}</span>
+      <span>
+        {isArabic ? labelAr : labelEn}
+        {field === "name" ? ` · ${copy.required}` : ` · ${copy.optional}`}
+      </span>
       <input
         type={inputType}
         dir={
           field === "github" ||
           field === "linkedIn" ||
+          field === "portfolio" ||
           field === "email" ||
           field === "phone"
             ? "ltr"
@@ -130,6 +195,8 @@ export const TextField = memo(function TextField({
               ? "rtl"
               : "ltr"
         }
+        placeholder={placeholders[field]}
+        required={field === "name"}
         value={value}
         onChange={(event) => updatePersonal(field, event.target.value)}
       />
@@ -146,13 +213,17 @@ export const SummaryField = memo(function SummaryField() {
 
   return (
     <label className={`wide-field${isArabic ? "" : " field-label-en"}`}>
-      <span>{copy.summary}</span>
+      <span>
+        {copy.summary} · {copy.optional}
+      </span>
       <textarea
         dir={isArabic ? "rtl" : "ltr"}
+        placeholder={copy.summaryPlaceholder}
         maxLength={500}
         value={summary}
         onChange={(event) => updateSummary(event.target.value)}
       />
+      <small className="field-guidance">{copy.summaryGuidance}</small>
       <small>{summary.length} / 500</small>
     </label>
   )
@@ -186,6 +257,11 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.job}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={
+              isArabic
+                ? "مثال: مهندس واجهات أمامية"
+                : "Example: Frontend Engineer"
+            }
             value={experience.job}
             onChange={(event) =>
               updateExperience(experience.id, { job: event.target.value })
@@ -196,6 +272,9 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.company}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={
+              isArabic ? "مثال: شركة تقنية" : "Example: Acme Technologies"
+            }
             value={experience.company}
             onChange={(event) =>
               updateExperience(experience.id, { company: event.target.value })
@@ -216,6 +295,7 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.achievements}</span>
           <textarea
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.achievementPlaceholder}
             value={experience.description}
             onChange={(event) =>
               updateExperience(experience.id, {
@@ -223,6 +303,9 @@ export const ExperienceFields = memo(function ExperienceFields({
               })
             }
           />
+          <small className="field-guidance wide-field">
+            {copy.experienceGuidance}
+          </small>
         </label>
       </div>
     </article>
@@ -257,6 +340,7 @@ export const EducationFields = memo(function EducationFields({
           <span>{copy.degree}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.degreePlaceholder}
             value={education.degree}
             onChange={(event) =>
               updateEducation(education.id, { degree: event.target.value })
@@ -267,6 +351,7 @@ export const EducationFields = memo(function EducationFields({
           <span>{copy.school}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.schoolPlaceholder}
             value={education.school}
             onChange={(event) =>
               updateEducation(education.id, { school: event.target.value })
@@ -315,6 +400,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.projectName}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.projectPlaceholder}
             value={project.name}
             onChange={(event) =>
               updateProject(project.id, { name: event.target.value })
@@ -325,6 +411,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.stack}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.stackPlaceholder}
             value={project.stack}
             onChange={(event) =>
               updateProject(project.id, { stack: event.target.value })
@@ -345,6 +432,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.projectDetails}</span>
           <textarea
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.projectDetailsPlaceholder}
             value={project.description}
             onChange={(event) =>
               updateProject(project.id, { description: event.target.value })
@@ -356,6 +444,7 @@ export const ProjectFields = memo(function ProjectFields({
           <input
             type="url"
             dir="ltr"
+            placeholder={copy.urlPlaceholder}
             value={project.url}
             onChange={(event) =>
               updateProject(project.id, { url: event.target.value })
@@ -526,9 +615,7 @@ export const ProfilePhotoField = memo(function ProfilePhotoField() {
 
   return (
     <div className="photo-field">
-      {isProcessing && (
-        <LoadingScreen message={copy.processingImage} overlay />
-      )}
+      {isProcessing && <LoadingScreen message={copy.processingImage} overlay />}
       <div className="photo-preview">
         {photoUrl ? (
           <Image

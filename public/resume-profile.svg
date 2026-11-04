@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="background" x1="20" y1="12" x2="238" y2="252" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F0E7"/>
+      <stop offset="1" stop-color="#8DB7AA"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="128" y1="170" x2="128" y2="270" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D7167"/>
+      <stop offset="1" stop-color="#244E49"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="100" y1="74" x2="157" y2="157" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3C9A6"/>
+      <stop offset="1" stop-color="#D99D76"/>
+    </linearGradient>
+    <filter id="shadow" x="30" y="16" width="196" height="254" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="128" fill="url(#background)"/>
+  <circle cx="205" cy="51" r="31" fill="#F5E9CE" fill-opacity=".72"/>
+  <path d="M37 256c8-41 39-71 91-71s83 30 91 71H37Z" fill="#D0E3D8"/>
+  <ellipse cx="128" cy="239" rx="77" ry="33" fill="#183B37" fill-opacity=".22" filter="url(#shadow)"/>
+  <path d="M65 256c5-43 27-69 63-69s58 26 63 69H65Z" fill="url(#shirt)"/>
+  <path d="m108 175 20 24 20-24v-29h-40v29Z" fill="url(#skin)"/>
+  <path d="M90 105c0-36 17-57 43-57 30 0 46 22 43 61l-7 32c-5 24-20 41-42 41-21 0-37-17-42-42l-5-35Z" fill="url(#skin)"/>
+  <path d="M83 112c-8-44 13-75 51-75 31 0 49 23 43 61-8-2-15-9-19-19-14 14-37 22-69 21l-6 12Z" fill="#273A35"/>
+  <path d="M84 105c-11 0-15 9-12 22 2 9 8 15 16 15l-4-37Zm89 0c11 0 15 9 12 22-2 9-8 15-16 15l4-37Z" fill="#D99D76"/>
+  <path d="M107 117c4-3 9-3 13 0m18 0c4-3 9-3 13 0" stroke="#573C34" stroke-linecap="round" stroke-width="3"/>
+  <circle cx="114" cy="124" r="2.5" fill="#263832"/>
+  <circle cx="146" cy="124" r="2.5" fill="#263832"/>
+  <path d="M120 151c5 4 11 4 16 0" stroke="#9D5E4F" stroke-linecap="round" stroke-width="3"/>
+  <path d="M89 201c11-10 24-15 39-15s28 5 39 15l-15 18h-48l-15-18Z" fill="#F5F7F1"/>
+  <path d="m115 196 13 15 13-15-13-10-13 10Z" fill="#B56B4E"/>
+</svg>

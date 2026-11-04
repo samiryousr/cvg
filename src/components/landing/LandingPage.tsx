@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type UIEvent } from "react"
 import { MiniResume } from "@/components/landing/MiniResume"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import type { Template } from "@/features/resume-builder/model"
 import {
-  atsTemplate,
-  templates,
-  type Template,
-} from "@/features/resume-builder/model"
+  templateRegistry,
+  templateRegistryEntries,
+} from "@/features/resume-builder/template-registry"
 
 export function LandingPage({
   onChoose,
@@ -16,6 +16,12 @@ export function LandingPage({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerFloating, setHeaderFloating] = useState(false)
+  const templateCount = templateRegistryEntries.length
+  const [activeSlideIndex, setActiveSlideIndex] = useState(templateCount * 2)
+  const [carouselPaused, setCarouselPaused] = useState(false)
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const scrollEndTimer = useRef<number | undefined>(undefined)
+  const activeTemplateIndex = activeSlideIndex % templateCount
 
   useEffect(() => {
     const updateHeader = () => setHeaderFloating(window.scrollY > 40)
@@ -43,6 +49,72 @@ export function LandingPage({
     }
   }, [])
 
+  const scrollToTemplate = useCallback(
+    (index: number, behavior: ScrollBehavior = "smooth") => {
+      const carousel = carouselRef.current
+      const slide = carousel?.querySelector<HTMLElement>(
+        `[data-template-index="${index}"]`,
+      )
+      if (!carousel || !slide) return
+
+      carousel.scrollTo({
+        left: slide.offsetLeft - (carousel.clientWidth - slide.clientWidth) / 2,
+        behavior,
+      })
+    },
+    [],
+  )
+
+  useEffect(() => {
+    scrollToTemplate(templateCount * 2, "instant")
+  }, [scrollToTemplate, templateCount])
+
+  useEffect(() => () => window.clearTimeout(scrollEndTimer.current), [])
+
+  const handleCarouselScroll = (event: UIEvent<HTMLDivElement>) => {
+    const carousel = event.currentTarget
+    const center = carousel.scrollLeft + carousel.clientWidth / 2
+    const slides = carousel.querySelectorAll<HTMLElement>(
+      "[data-template-index]",
+    )
+    let closestIndex = 0
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    slides.forEach((slide) => {
+      const slideCenter = slide.offsetLeft + slide.clientWidth / 2
+      const distance = Math.abs(center - slideCenter)
+      if (distance < closestDistance) {
+        closestDistance = distance
+        closestIndex = Number(slide.dataset.templateIndex)
+      }
+    })
+
+    setActiveSlideIndex((currentIndex) =>
+      currentIndex === closestIndex ? currentIndex : closestIndex,
+    )
+
+    window.clearTimeout(scrollEndTimer.current)
+    scrollEndTimer.current = window.setTimeout(() => {
+      if (closestIndex >= templateCount && closestIndex < templateCount * 4) {
+        return
+      }
+
+      const equivalentIndex = templateCount * 2 + (closestIndex % templateCount)
+      scrollToTemplate(equivalentIndex, "instant")
+    }, 180)
+  }
+
+  useEffect(() => {
+    if (carouselPaused || templateRegistryEntries.length < 2) return
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
+    const timer = window.setInterval(() => {
+      scrollToTemplate(activeSlideIndex + 1)
+    }, 2500)
+
+    return () => window.clearInterval(timer)
+  }, [activeSlideIndex, carouselPaused, scrollToTemplate])
+
   return (
     <div className="landing" id="top" dir="rtl">
       <div className="site-header-slot">
@@ -63,7 +135,7 @@ export function LandingPage({
             <ThemeToggle />
             <button
               className="text-button"
-              onClick={() => onChoose(atsTemplate)}
+              onClick={() => onChoose(templateRegistry.ats)}
             >
               أنشئ سيرتك
               <span aria-hidden="true">←</span>
@@ -92,7 +164,7 @@ export function LandingPage({
             <a href="#how" onClick={() => setMenuOpen(false)}>
               طريقة الاستخدام
             </a>
-            <button onClick={() => onChoose(atsTemplate)}>
+            <button onClick={() => onChoose(templateRegistry.ats)}>
               أنشئ سيرتك مجانًا
             </button>
           </div>
@@ -103,24 +175,29 @@ export function LandingPage({
         <section className="hero">
           <div className="hero-glow" aria-hidden="true" />
           <div className="hero-grid" aria-hidden="true" />
-          <div className="eyebrow">
-            <span />
-            سيرتك الذاتية، بطريقتك
+          <div className="hero-copy">
+            <div className="eyebrow">
+              <span />
+              سيرتك الذاتية، بطريقتك
+            </div>
+            <h1>
+              اصنع سيرة ذاتية
+              <br />
+              <em>تحكي قصتك.</em>
+            </h1>
+            <p>قوالب احترافية، تعديل فوري، ونتيجة تليق بخبرتك — بدون تعقيد.</p>
+            <button
+              className="primary-button"
+              onClick={() => onChoose(templateRegistry.ats)}
+            >
+              ابدأ مجانًا
+              <span aria-hidden="true">←</span>
+            </button>
+            <small>لا تحتاج بطاقة ائتمانية · جاهزة خلال دقائق</small>
           </div>
-          <h1>
-            اصنع سيرة ذاتية
-            <br />
-            <em>تحكي قصتك.</em>
-          </h1>
-          <p>قوالب احترافية، تعديل فوري، ونتيجة تليق بخبرتك — بدون تعقيد.</p>
-          <button
-            className="primary-button"
-            onClick={() => onChoose(atsTemplate)}
-          >
-            ابدأ مجانًا
-            <span aria-hidden="true">←</span>
-          </button>
-          <small>لا تحتاج بطاقة ائتمانية · جاهزة خلال دقائق</small>
+          <div className="hero-resume-visual" aria-hidden="true">
+            <MiniResume template={templateRegistry.modern} />
+          </div>
         </section>
 
         <section className="templates-section" id="templates">
@@ -132,26 +209,107 @@ export function LandingPage({
             <p>كل قالب مُهيأ بعناية ليبرز خبراتك ويجعل قراءتها أسهل.</p>
           </div>
 
-          <div className="template-grid">
-            {templates.map((template, index) => (
+          <div
+            className="template-carousel"
+            role="region"
+            aria-roledescription="carousel"
+            aria-label="قوالب السيرة الذاتية"
+            onFocusCapture={() => setCarouselPaused(true)}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setCarouselPaused(false)
+              }
+            }}
+          >
+            <div
+              className="template-carousel-viewport"
+              ref={carouselRef}
+              onScroll={handleCarouselScroll}
+              dir="ltr"
+            >
+              <div className="template-carousel-track">
+                {Array.from({ length: 5 }, (_, copyIndex) =>
+                  templateRegistryEntries.map((template, index) => {
+                    const slideIndex = copyIndex * templateCount + index
+                    const isAccessibleCopy = copyIndex === 2
+
+                    return (
+                      <article
+                        key={`${copyIndex}-${template.id}`}
+                        className={`template-slide${
+                          activeSlideIndex === slideIndex ? " active" : ""
+                        }`}
+                        data-template-index={slideIndex}
+                        aria-label={`${index + 1} من ${templateCount}: ${template.name}`}
+                        aria-current={
+                          activeSlideIndex === slideIndex ? "true" : undefined
+                        }
+                        aria-hidden={!isAccessibleCopy}
+                      >
+                        <div className="template-preview">
+                          <MiniResume template={template} />
+                          <button
+                            className="choose-pill"
+                            type="button"
+                            tabIndex={isAccessibleCopy ? 0 : -1}
+                            onClick={() => onChoose(template)}
+                            aria-label={`استخدم قالب ${template.name}`}
+                          >
+                            استخدم هذا القالب
+                          </button>
+                        </div>
+                        <div className="template-info">
+                          <div>
+                            <h3>{template.name}</h3>
+                            <p>{template.description}</p>
+                          </div>
+                          <div className="template-info-tags">
+                            <span>{template.tone}</span>
+                            <small>{template.audience}</small>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  }),
+                )}
+              </div>
+            </div>
+            <div className="template-carousel-controls" dir="ltr">
               <button
-                key={template.id}
-                className={`template-card card-${index + 1} scroll-reveal`}
-                onClick={() => onChoose(template)}
+                type="button"
+                className="template-carousel-arrow"
+                aria-label="القالب السابق"
+                onClick={() => scrollToTemplate(activeSlideIndex - 1)}
               >
-                <div className="template-preview">
-                  <MiniResume template={template} />
-                  <span className="choose-pill">استخدم هذا القالب</span>
-                </div>
-                <div className="template-info">
-                  <div>
-                    <h3>{template.name}</h3>
-                    <p>{template.description}</p>
-                  </div>
-                  <span>{template.tone}</span>
-                </div>
+                ‹
               </button>
-            ))}
+              <div
+                className="template-carousel-dots"
+                role="group"
+                aria-label="اختيار قالب"
+              >
+                {templateRegistryEntries.map((template, index) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    className={activeTemplateIndex === index ? "active" : ""}
+                    aria-label={`عرض ${template.name}`}
+                    aria-current={
+                      activeTemplateIndex === index ? "true" : undefined
+                    }
+                    onClick={() => scrollToTemplate(templateCount * 2 + index)}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                className="template-carousel-arrow"
+                aria-label="القالب التالي"
+                onClick={() => scrollToTemplate(activeSlideIndex + 1)}
+              >
+                ›
+              </button>
+            </div>
           </div>
         </section>
 
@@ -213,7 +371,7 @@ export function LandingPage({
             </p>
             <button
               className="primary-button"
-              onClick={() => onChoose(atsTemplate)}
+              onClick={() => onChoose(templateRegistry.ats)}
             >
               أنشئ سيرتك الآن
               <span aria-hidden="true">←</span>
@@ -246,7 +404,7 @@ export function LandingPage({
           <p>أنشئ سيرة ذاتية تعبّر عنك وتمنح خبراتك المساحة التي تستحقها.</p>
           <button
             className="primary-button light-button"
-            onClick={() => onChoose(atsTemplate)}
+            onClick={() => onChoose(templateRegistry.ats)}
           >
             ابدأ مجانًا
             <span aria-hidden="true">←</span>
