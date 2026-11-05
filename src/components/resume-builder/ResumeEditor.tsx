@@ -1,7 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { useResumeStore } from "@/features/resume-builder/store"
+import { useState } from "react"
+import {
+  useResumeSaveStatus,
+  useResumeStore,
+} from "@/features/resume-builder/store"
 import {
   getTemplateDefinition,
   normalizeTemplateId,
@@ -67,36 +70,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
   const setPrimaryColor = useResumeStore((state) => state.setPrimaryColor)
 
-  const [isSaving, setIsSaving] = useState(false)
-  const hasMounted = useRef(false)
-
-  useEffect(() => {
-    if (!hasMounted.current) {
-      hasMounted.current = true
-      return
-    }
-
-    setIsSaving(true)
-    const timer = window.setTimeout(() => setIsSaving(false), 450)
-    return () => window.clearTimeout(timer)
-  }, [
-    personal,
-    summary,
-    experiences,
-    education,
-    projects,
-    certifications,
-    skills,
-    languages,
-    awards,
-    volunteerExperiences,
-    publications,
-    references,
-    customSections,
-    templateId,
-    documentLanguage,
-    primaryColor,
-  ])
+  const saveStatus = useResumeSaveStatus((state) => state.status)
 
   const copy = {
     saved: isArabic ? "محفوظ تلقائيًا على هذا الجهاز" : "Saved on this device",
@@ -104,9 +78,16 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     savedChanges: isArabic
       ? "تم حفظ التغييرات على هذا الجهاز"
       : "Changes saved on this device",
+    saveError: isArabic
+      ? "تعذر حفظ التغييرات على هذا الجهاز"
+      : "Could not save changes on this device",
     newResume: isArabic ? "سيرة ذاتية جديدة" : "Untitled resume",
     home: isArabic ? "العودة للرئيسية" : "Back to home",
     downloadPdf: isArabic ? "حفظ PDF" : "Save as PDF",
+    exportingPdf: isArabic ? "جارٍ إنشاء PDF..." : "Generating PDF...",
+    exportFailed: isArabic
+      ? "تعذر إنشاء ملف PDF. حاول مرة أخرى."
+      : "Could not generate the PDF. Please try again.",
     checkingAts: isArabic
       ? "جارٍ فحص السيرة عبر ATS"
       : "Checking your CV with ATS",
@@ -151,6 +132,8 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const [activeMobilePanel, setActiveMobilePanel] =
     useState<"form" | "preview">("form")
   const [isCheckingAts, setIsCheckingAts] = useState(false)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [exportError, setExportError] = useState("")
 
   const completionFields = [
     personal.name,
@@ -240,15 +223,26 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   )
 
   const printResume = async () => {
+    if (isExportingPdf) return
+
     const previousPanel = activeMobilePanel
     const previousTitle = document.title
     const isMobile = window.matchMedia("(max-width: 520px)").matches
     const shouldCheckAts = templateDefinition.atsOptimized === true
+    const resumeElement = document.querySelector<HTMLElement>(".resume-paper")
     const safeName =
       personal.name
         .trim()
         .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
         .replace(/\s+/g, "-") || "resume"
+
+    if (!resumeElement) {
+      setExportError(copy.exportFailed)
+      return
+    }
+
+    setExportError("")
+    setIsExportingPdf(true)
 
     if (isMobile && previousPanel !== "preview") {
       setActiveMobilePanel("preview")
@@ -267,12 +261,45 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
       setIsCheckingAts(false)
     }
 
+    const previousStyle = resumeElement.getAttribute("style")
     document.title = `CV-${safeName}`
     try {
-      window.print()
+      const { default: html2pdf } = await import("html2pdf.js")
+      resumeElement.style.width = "794px"
+      resumeElement.style.minWidth = "794px"
+      resumeElement.style.maxWidth = "none"
+      resumeElement.style.minHeight = "1123px"
+      resumeElement.style.aspectRatio = "210 / 297"
+      resumeElement.style.margin = "0"
+      resumeElement.style.border = "0"
+      resumeElement.style.borderRadius = "0"
+      resumeElement.style.boxShadow = "none"
+
+      await html2pdf()
+        .set({
+          margin: 0,
+          filename: `CV-${safeName}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          enableLinks: true,
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            windowWidth: 1024,
+          },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(resumeElement)
+        .save()
+    } catch (error) {
+      console.error("Could not export the resume as a PDF.", error)
+      setExportError(copy.exportFailed)
     } finally {
+      if (previousStyle === null) resumeElement.removeAttribute("style")
+      else resumeElement.setAttribute("style", previousStyle)
       document.title = previousTitle
       setIsCheckingAts(false)
+      setIsExportingPdf(false)
       if (isMobile && previousPanel !== "preview") {
         setActiveMobilePanel(previousPanel)
       }
@@ -315,16 +342,18 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           <div className="editor-document-title" dir={isArabic ? "rtl" : "ltr"}>
             <strong>{personal.name.trim() || copy.newResume}</strong>
             <span
-              className={`save-state${isSaving ? " saving" : ""}`}
+              className={`save-state${saveStatus === "saving" ? " saving" : ""}`}
               role="status"
               aria-live="polite"
             >
               <span />
-              {isSaving
+              {saveStatus === "saving"
                 ? copy.saving
-                : hasMounted.current
-                  ? copy.savedChanges
-                  : copy.saved}
+                : saveStatus === "error"
+                  ? copy.saveError
+                  : saveStatus === "saved"
+                    ? copy.savedChanges
+                    : copy.saved}
             </span>
           </div>
         </div>
@@ -364,13 +393,18 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           <button
             className="download-button"
             onClick={printResume}
-            disabled={isCheckingAts}
+            disabled={isCheckingAts || isExportingPdf}
             type="button"
           >
-            {copy.downloadPdf}
+            {isExportingPdf ? copy.exportingPdf : copy.downloadPdf}
           </button>
         </div>
       </header>
+      {exportError && (
+        <p className="pdf-export-error" role="alert">
+          {exportError}
+        </p>
+      )}
 
       <div className="editor-layout">
         <div

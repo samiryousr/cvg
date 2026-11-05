@@ -1,19 +1,17 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type UIEvent } from "react"
+import { useRouter } from "next/navigation"
 import { MiniResume } from "@/components/landing/MiniResume"
 import { ThemeToggle } from "@/components/ThemeToggle"
-import type { Template } from "@/features/resume-builder/model"
+import type { TemplateId } from "@/features/resume-builder/model"
 import {
   templateRegistry,
   templateRegistryEntries,
 } from "@/features/resume-builder/template-registry"
 
-export function LandingPage({
-  onChoose,
-}: {
-  onChoose: (template: Template) => void
-}) {
+export function LandingPage() {
+  const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerFloating, setHeaderFloating] = useState(false)
   const templateCount = templateRegistryEntries.length
@@ -22,6 +20,9 @@ export function LandingPage({
   const carouselRef = useRef<HTMLDivElement>(null)
   const scrollEndTimer = useRef<number | undefined>(undefined)
   const activeTemplateIndex = activeSlideIndex % templateCount
+  const openEditor = (templateId: TemplateId) => {
+    router.push(`/editor?template=${encodeURIComponent(templateId)}`)
+  }
 
   useEffect(() => {
     const updateHeader = () => setHeaderFloating(window.scrollY > 40)
@@ -135,7 +136,7 @@ export function LandingPage({
             <ThemeToggle />
             <button
               className="text-button"
-              onClick={() => onChoose(templateRegistry.ats)}
+              onClick={() => openEditor("ats")}
             >
               أنشئ سيرتك
               <span aria-hidden="true">←</span>
@@ -164,7 +165,7 @@ export function LandingPage({
             <a href="#how" onClick={() => setMenuOpen(false)}>
               طريقة الاستخدام
             </a>
-            <button onClick={() => onChoose(templateRegistry.ats)}>
+            <button onClick={() => openEditor("ats")}>
               أنشئ سيرتك مجانًا
             </button>
           </div>
@@ -188,7 +189,7 @@ export function LandingPage({
             <p>قوالب احترافية، تعديل فوري، ونتيجة تليق بخبرتك — بدون تعقيد.</p>
             <button
               className="primary-button"
-              onClick={() => onChoose(templateRegistry.ats)}
+              onClick={() => openEditor("ats")}
             >
               ابدأ مجانًا
               <span aria-hidden="true">←</span>
@@ -252,7 +253,7 @@ export function LandingPage({
                             className="choose-pill"
                             type="button"
                             tabIndex={isAccessibleCopy ? 0 : -1}
-                            onClick={() => onChoose(template)}
+                            onClick={() => openEditor(template.id)}
                             aria-label={`استخدم قالب ${template.name}`}
                           >
                             استخدم هذا القالب
@@ -371,7 +372,7 @@ export function LandingPage({
             </p>
             <button
               className="primary-button"
-              onClick={() => onChoose(templateRegistry.ats)}
+              onClick={() => openEditor("ats")}
             >
               أنشئ سيرتك الآن
               <span aria-hidden="true">←</span>
@@ -404,7 +405,7 @@ export function LandingPage({
           <p>أنشئ سيرة ذاتية تعبّر عنك وتمنح خبراتك المساحة التي تستحقها.</p>
           <button
             className="primary-button light-button"
-            onClick={() => onChoose(templateRegistry.ats)}
+            onClick={() => openEditor("ats")}
           >
             ابدأ مجانًا
             <span aria-hidden="true">←</span>

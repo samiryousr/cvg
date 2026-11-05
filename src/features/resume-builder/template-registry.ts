@@ -2,16 +2,16 @@ import type { ComponentType } from "react"
 
 import {
   AtsResumeTemplate,
-  ClassicResumeTemplate,
-  CorporateResumeTemplate,
-  CreativeResumeTemplate,
-  DeveloperResumeTemplate,
-  ExecutiveResumeTemplate,
-  MinimalistResumeTemplate,
-  ModernResumeTemplate,
-  StudentResumeTemplate,
-  type ResumeTemplateProps,
-} from "@/components/resume-builder/ResumeTemplates"
+} from "@/components/resume-builder/templates/AtsTemplate"
+import { ClassicResumeTemplate } from "@/components/resume-builder/templates/ClassicTemplate"
+import { CorporateResumeTemplate } from "@/components/resume-builder/templates/CorporateTemplate"
+import { CreativeResumeTemplate } from "@/components/resume-builder/templates/CreativeTemplate"
+import { DeveloperResumeTemplate } from "@/components/resume-builder/templates/DeveloperTemplate"
+import { ExecutiveResumeTemplate } from "@/components/resume-builder/templates/ExecutiveTemplate"
+import { MinimalistResumeTemplate } from "@/components/resume-builder/templates/MinimalistTemplate"
+import { ModernResumeTemplate } from "@/components/resume-builder/templates/ModernTemplate"
+import { StudentResumeTemplate } from "@/components/resume-builder/templates/StudentTemplate"
+import type { ResumeTemplateProps } from "@/components/resume-builder/templates/shared-sections"
 
 import type { Template, TemplateId } from "@/features/resume-builder/model"
 

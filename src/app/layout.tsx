@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 
 import type { ReactNode } from "react"
 
+import { AppShell } from "@/components/AppShell"
+
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -11,9 +13,9 @@ export const metadata: Metadata = {
     "أنشئ سيرة ذاتية احترافية بسهولة مع قوالب قابلة للتخصيص ومعاينة مباشرة.",
 
   robots: {
-    index: false,
+    index: true,
 
-    follow: false,
+    follow: true,
   },
 
   icons: {
@@ -26,7 +28,9 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ar" dir="rtl">
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   )
 }

@@ -28,6 +28,72 @@ import {
 import { normalizeTemplateId } from "@/features/resume-builder/template-registry"
 
 type Direction = -1 | 1
+type ResumeSaveStatus = "idle" | "saving" | "saved" | "error"
+
+export const useResumeSaveStatus = create<{ status: ResumeSaveStatus }>(() => ({
+  status: "idle",
+}))
+
+const pendingStorageWrites = new Map<
+  string,
+  { timer: ReturnType<typeof setTimeout>; value: string }
+>()
+
+function flushPendingStorageWrites() {
+  for (const [name, pending] of pendingStorageWrites) {
+    clearTimeout(pending.timer)
+
+    try {
+      localStorage.setItem(name, pending.value)
+      useResumeSaveStatus.setState({ status: "saved" })
+    } catch (error) {
+      console.error("Could not save the resume to localStorage.", error)
+      useResumeSaveStatus.setState({ status: "error" })
+    } finally {
+      pendingStorageWrites.delete(name)
+    }
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushPendingStorageWrites)
+}
+
+const debouncedLocalStorage = {
+  getItem: (name: string) => localStorage.getItem(name),
+
+  setItem: (name: string, value: string) => {
+    useResumeSaveStatus.setState({ status: "saving" })
+
+    const pending = pendingStorageWrites.get(name)
+    if (pending) clearTimeout(pending.timer)
+
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(name, value)
+        useResumeSaveStatus.setState({ status: "saved" })
+      } catch (error) {
+        console.error("Could not save the resume to localStorage.", error)
+        useResumeSaveStatus.setState({ status: "error" })
+      } finally {
+        pendingStorageWrites.delete(name)
+      }
+    }, 500)
+
+    pendingStorageWrites.set(name, { timer, value })
+  },
+
+  removeItem: (name: string) => {
+    const pending = pendingStorageWrites.get(name)
+    if (pending) {
+      clearTimeout(pending.timer)
+      pendingStorageWrites.delete(name)
+    }
+
+    localStorage.removeItem(name)
+    useResumeSaveStatus.setState({ status: "idle" })
+  },
+}
 
 type ResumeActions = {
   updatePersonal: <K extends keyof PersonalInfo,>(
@@ -215,6 +281,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+function readString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback
+}
+
+function readId(value: unknown, seen: Set<string>): string {
+  const id = readString(value).trim()
+  if (id && !seen.has(id)) {
+    seen.add(id)
+    return id
+  }
+
+  let nextId = createId()
+  while (seen.has(nextId)) nextId = createId()
+  seen.add(nextId)
+  return nextId
+}
+
+function normalizeItems<T>(
+  value: unknown,
+  normalize: (item: Record<string, unknown>) => T,
+): T[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(isRecord).map(normalize)
+}
+
 function moveItem<T extends { id: string }>(
   items: T[],
 
@@ -296,6 +387,207 @@ function normalizeSectionLayout(
     ],
 
     hidden: [...new Set(hidden)],
+  }
+}
+
+function normalizeResumeData(
+  value: unknown,
+  fallback: ResumeData,
+): ResumeData {
+  const raw = isRecord(value) ? value : {}
+  const rawPersonal = isRecord(raw.personal) ? raw.personal : {}
+  const personal: PersonalInfo = {
+    name: readString(rawPersonal.name, fallback.personal.name),
+    role: readString(rawPersonal.role, fallback.personal.role),
+    email: readString(rawPersonal.email, fallback.personal.email),
+    phone: readString(rawPersonal.phone, fallback.personal.phone),
+    location: readString(rawPersonal.location, fallback.personal.location),
+    github: readString(rawPersonal.github, fallback.personal.github),
+    linkedIn: readString(rawPersonal.linkedIn, fallback.personal.linkedIn),
+    portfolio: readString(rawPersonal.portfolio, fallback.personal.portfolio),
+    photoUrl:
+      typeof rawPersonal.photoUrl === "string" || rawPersonal.photoUrl === null
+        ? rawPersonal.photoUrl
+        : fallback.personal.photoUrl,
+  }
+
+  const experienceIds = new Set<string>()
+  const experiences = normalizeItems(raw.experiences, (item): Experience => ({
+    id: readId(item.id, experienceIds),
+    job: readString(item.job),
+    company: readString(item.company),
+    period: readString(item.period),
+    description: readString(item.description),
+  }))
+
+  const educationIds = new Set<string>()
+  const education = normalizeItems(raw.education, (item): Education => ({
+    id: readId(item.id, educationIds),
+    degree: readString(item.degree),
+    school: readString(item.school),
+    period: readString(item.period),
+  }))
+
+  const projectIds = new Set<string>()
+  const projects = normalizeItems(raw.projects, (item): Project => ({
+    id: readId(item.id, projectIds),
+    name: readString(item.name),
+    stack: readString(item.stack),
+    period: readString(item.period),
+    description: readString(item.description),
+    url: readString(item.url),
+  }))
+
+  const certificationIds = new Set<string>()
+  const certifications = normalizeItems(
+    raw.certifications,
+    (item): Certification => ({
+      id: readId(item.id, certificationIds),
+      name: readString(item.name),
+      issuer: readString(item.issuer),
+      period: readString(item.period),
+    }),
+  )
+
+  const languageIds = new Set<string>()
+  const languages = normalizeItems(raw.languages, (item): ResumeLanguage => ({
+    id: readId(item.id, languageIds),
+    name: readString(item.name),
+    proficiency: readString(item.proficiency),
+  }))
+
+  const awardIds = new Set<string>()
+  const awards = normalizeItems(raw.awards, (item): Award => ({
+    id: readId(item.id, awardIds),
+    title: readString(item.title),
+    issuer: readString(item.issuer),
+    date: readString(item.date),
+    description: readString(item.description),
+  }))
+
+  const volunteerIds = new Set<string>()
+  const volunteerExperiences = normalizeItems(
+    raw.volunteerExperiences,
+    (item): VolunteerExperience => ({
+      id: readId(item.id, volunteerIds),
+      organization: readString(item.organization),
+      role: readString(item.role),
+      startDate: readString(item.startDate),
+      endDate: readString(item.endDate),
+      description: readString(item.description),
+    }),
+  )
+
+  const publicationIds = new Set<string>()
+  const publications = normalizeItems(
+    raw.publications,
+    (item): Publication => ({
+      id: readId(item.id, publicationIds),
+      title: readString(item.title),
+      publisher: readString(item.publisher),
+      date: readString(item.date),
+      url: readString(item.url),
+      description: readString(item.description),
+    }),
+  )
+
+  const referenceIds = new Set<string>()
+  const references = normalizeItems(
+    raw.references,
+    (item): Reference => ({
+      id: readId(item.id, referenceIds),
+      name: readString(item.name),
+      position: readString(item.position),
+      organization: readString(item.organization),
+      email: readString(item.email),
+      phone: readString(item.phone),
+    }),
+  )
+
+  const customSectionIds = new Set<string>()
+  const customSections = normalizeItems(
+    raw.customSections,
+    (section): CustomResumeSection => {
+      const sectionId = readId(section.id, customSectionIds)
+      const entryIds = new Set<string>()
+      const entries = normalizeItems(section.entries, (entry) => {
+        const entryId = readId(entry.id, entryIds)
+        const fieldIds = new Set<string>()
+        const fields = normalizeItems(entry.fields, (field) => ({
+          id: readId(field.id, fieldIds),
+          label: readString(field.label),
+          value: readString(field.value),
+        }))
+
+        return {
+          id: entryId,
+          title: readString(entry.title),
+          subtitle: readString(entry.subtitle),
+          date: readString(entry.date),
+          description: readString(entry.description),
+          fields,
+        }
+      })
+
+      return {
+        id: sectionId,
+        title: readString(section.title),
+        entries,
+      }
+    },
+  )
+  const effectiveCustomSections = Array.isArray(raw.customSections)
+    ? customSections
+    : fallback.customSections
+
+  return {
+    personal,
+    summary: readString(raw.summary, fallback.summary),
+    experiences:
+      Array.isArray(raw.experiences) ? experiences : fallback.experiences,
+    education: Array.isArray(raw.education) ? education : fallback.education,
+    projects: Array.isArray(raw.projects) ? projects : fallback.projects,
+    certifications: Array.isArray(raw.certifications)
+      ? certifications
+      : fallback.certifications,
+    skills: Array.isArray(raw.skills)
+      ? raw.skills.filter((skill): skill is string => typeof skill === "string")
+      : fallback.skills,
+    languages: Array.isArray(raw.languages) ? languages : fallback.languages,
+    awards: Array.isArray(raw.awards) ? awards : fallback.awards,
+    volunteerExperiences: Array.isArray(raw.volunteerExperiences)
+      ? volunteerExperiences
+      : fallback.volunteerExperiences,
+    publications: Array.isArray(raw.publications)
+      ? publications
+      : fallback.publications,
+    references: Array.isArray(raw.references) ? references : fallback.references,
+    customSections: effectiveCustomSections,
+    sectionLayout: normalizeSectionLayout(
+      raw.sectionLayout,
+      effectiveCustomSections,
+    ),
+    templateId:
+      typeof raw.templateId === "string"
+        ? normalizeTemplateId(raw.templateId, fallback.templateId)
+        : fallback.templateId,
+    documentLanguage:
+      raw.documentLanguage === "ar" || raw.documentLanguage === "en"
+        ? raw.documentLanguage
+        : fallback.documentLanguage,
+    primaryColor:
+      typeof raw.primaryColor === "string" &&
+      /^#[\da-f]{6}$/i.test(raw.primaryColor)
+        ? raw.primaryColor
+        : fallback.primaryColor,
+    colorMode:
+      raw.colorMode === "light" || raw.colorMode === "dark"
+        ? raw.colorMode
+        : fallback.colorMode,
+    editorLanguage:
+      raw.editorLanguage === "ar" || raw.editorLanguage === "en"
+        ? raw.editorLanguage
+        : fallback.editorLanguage,
   }
 }
 
@@ -1150,7 +1442,7 @@ export const useResumeStore = create<ResumeStore>()(
 
       version: 2,
 
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => debouncedLocalStorage),
 
       skipHydration: true,
 
@@ -1195,96 +1487,12 @@ export const useResumeStore = create<ResumeStore>()(
       }),
 
       migrate: (persistedState) =>
-        isRecord(persistedState) ? persistedState as Partial<ResumeData> : {},
+        normalizeResumeData(persistedState, initialResume),
 
-      merge: (persistedState, currentState) => {
-        const persisted = isRecord(persistedState)
-          ? persistedState as Partial<ResumeData>
-          : {}
-
-        const personal = isRecord(persisted.personal)
-          ? persisted.personal as Partial<PersonalInfo>
-          : {}
-
-        const customSections = Array.isArray(persisted.customSections)
-          ? persisted.customSections
-          : currentState.customSections
-
-        return {
-          ...currentState,
-
-          ...persisted,
-
-          personal: { ...currentState.personal, ...personal },
-
-          experiences: Array.isArray(persisted.experiences)
-            ? persisted.experiences
-            : currentState.experiences,
-
-          education: Array.isArray(persisted.education)
-            ? persisted.education
-            : currentState.education,
-
-          projects: Array.isArray(persisted.projects)
-            ? persisted.projects
-            : currentState.projects,
-
-          certifications: Array.isArray(persisted.certifications)
-            ? persisted.certifications
-            : currentState.certifications,
-
-          skills: Array.isArray(persisted.skills)
-            ? persisted.skills
-            : currentState.skills,
-
-          languages: Array.isArray(persisted.languages)
-            ? persisted.languages
-            : currentState.languages,
-
-          awards: Array.isArray(persisted.awards)
-            ? persisted.awards
-            : currentState.awards,
-
-          volunteerExperiences: Array.isArray(persisted.volunteerExperiences)
-            ? persisted.volunteerExperiences
-            : currentState.volunteerExperiences,
-
-          publications: Array.isArray(persisted.publications)
-            ? persisted.publications
-            : currentState.publications,
-
-          references: Array.isArray(persisted.references)
-            ? persisted.references
-            : currentState.references,
-
-          customSections,
-
-          sectionLayout: normalizeSectionLayout(
-            persisted.sectionLayout,
-
-            customSections,
-          ),
-
-          templateId: normalizeTemplateId(
-            persisted.templateId ?? currentState.templateId,
-
-            currentState.templateId,
-          ),
-
-          primaryColor: persisted.primaryColor ?? currentState.primaryColor,
-
-          colorMode: persisted.colorMode ?? currentState.colorMode,
-
-          editorLanguage:
-            persisted.editorLanguage ?? currentState.editorLanguage,
-
-          documentLanguage:
-            persisted.documentLanguage === "ar" ||
-            persisted.documentLanguage === "en"
-              ? persisted.documentLanguage
-              : currentState.documentLanguage,
-        }
-      },
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...normalizeResumeData(persistedState, currentState),
+      }),
 
       onRehydrateStorage: () => (_state, error) => {
         if (error) {

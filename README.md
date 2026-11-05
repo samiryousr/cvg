@@ -1,16 +1,38 @@
-<<<<<<< HEAD
-# سيرتي — CV Generator
+# Sirti Resume Builder
 
-تطبيق عربي لإنشاء سيرة ذاتية مع معاينة مباشرة، حفظ محلي، وقوالب قابلة للتخصيص. مبني باستخدام Next.js App Router وReact وTypeScript وTailwind CSS v4.
+Sirti is a local-first resume builder for creating, editing, and printing professional CVs in Arabic or English. It is built with the Next.js App Router, React, TypeScript, Zustand, and Tailwind CSS v4.
 
-## التشغيل
+## Project Overview
+
+The application has two routes:
+
+- `/` — landing page and template gallery.
+- `/editor` — resume editor. An optional `template` query parameter selects a template, for example `/editor?template=modern`.
+
+Resume content and preferences are stored in the browser's `localStorage`. The application does not send resume data to a backend. Zustand persistence includes normalization for missing or malformed saved data to support safer hydration and backward compatibility.
+
+## Key Features
+
+- Nine resume templates: ATS Classic, Tech / Developer, Modern Minimal, Creative / Designer, Student / Graduate, Professional Corporate, Executive, Modern, and Classic.
+- Live preview that updates as resume content changes.
+- Arabic and English resume documents, with RTL/LTR direction handled independently from the editor interface language.
+- Editable sections, including experience, education, skills, projects, certifications, languages, awards, volunteer experience, publications, references, and custom sections.
+- Local autosave using Zustand `persist`, with defensive normalization of stored resume data.
+- Browser print flow with A4 print styles for saving a resume as PDF.
+- Light and dark application themes.
+
+## Getting Started
+
+Requirements: Node.js and pnpm.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-أوامر أخرى:
+Open [http://localhost:3000](http://localhost:3000).
+
+Other commands:
 
 ```bash
 pnpm build
@@ -18,34 +40,44 @@ pnpm start
 pnpm format
 ```
 
-## المزايا الحالية
+## Project Architecture
 
-- صفحة تعريفية عربية متجاوبة مع تأثيرات ظهور عند التمرير.
-- وضع داكن وفاتح مع حفظ الاختيار تلقائيًا على الجهاز.
-- محرر سيرة ذاتية لبيانات التواصل والملخص والخبرات والمشاريع والتعليم والمهارات والشهادات.
-- مبدّل عربي/إنجليزي لتسميات حقول الإدخال واتجاهها فقط؛ تبقى واجهة الموقع عربية وتظل عناوين السيرة وتخطيطها بالإنجليزية. تُعرض البيانات كما أُدخلت ولا تُترجم تلقائيًا.
-- معاينة فورية؛ حقول النموذج والمعاينة تقرأ وتحدّث Zustand Store مباشرة.
-- حفظ تلقائي محلي في `localStorage` باستخدام Zustand `persist`. البيانات متاحة على نفس المتصفح والجهاز فقط، ولا تُرسل إلى خادم.
-- أربعة قوالب: عصري، كلاسيكي، بسيط، ومتوافق مع ATS أحادي العمود.
-- قالب ATS إنجليزي أحادي العمود مع معلومات تواصل أفقية، وروابط GitHub وLinkedIn، وإنجازات نقطية، ومشاريع وشهادات قابلة للتحرير.
-- رفع صورة شخصية؛ تُصغّر الصورة قبل حفظها محليًا لتقليل استهلاك التخزين.
-- إضافة وحذف عناصر الخبرة والتعليم والمشاريع والشهادات، ونسبة اكتمال محسوبة من الحقول.
-- تصدير PDF من نافذة الطباعة المدمجة في المتصفح، مع تنسيق A4 ودعم اتجاه العربية. اختر **Save as PDF / حفظ كملف PDF** من نافذة الطباعة.
+```text
+src/
+├── app/
+│   ├── editor/
+│   │   └── page.tsx                 Editor route and template query handling
+│   ├── layout.tsx                   Root document, metadata, and application shell
+│   ├── page.tsx                     Landing page route
+│   └── globals.css                  Global, landing, editor, template, and print styles
+├── components/
+│   ├── landing/
+│   │   ├── LandingPage.tsx          Landing page and template selection
+│   │   └── MiniResume.tsx           Compact template previews
+│   ├── resume-builder/
+│   │   ├── templates/
+│   │   │   ├── *Template.tsx        Individual resume template components
+│   │   │   └── shared-sections.tsx  Shared resume sections and rendering helpers
+│   │   ├── LiveResumePreview.tsx    Store-connected live preview
+│   │   ├── ResumeEditor.tsx         Editor layout, controls, and print action
+│   │   ├── ResumeEditorFields.tsx   Personal and resume entry fields
+│   │   ├── ResumeEditorRoute.tsx    Applies a selected template after hydration
+│   │   ├── ResumeSectionManager.tsx Section editing, visibility, and ordering
+│   │   └── ResumeTemplates.tsx      Compatibility exports for template components
+│   ├── AppShell.tsx                 Store hydration and persisted theme wrapper
+│   ├── LoadingScreen.tsx            Loading state
+│   └── ThemeToggle.tsx              Light/dark theme control
+└── features/
+    └── resume-builder/
+        ├── model.ts                 Resume data types and default values
+        ├── store.ts                 Zustand state, actions, and persistence
+        └── template-registry.ts     Template metadata and renderer registry
+```
 
-## بنية المجلدات
+### Data and rendering flow
 
-- `src/app/`: المسارات، تخطيط المستند، والأنماط العامة.
-- `src/components/landing/`: صفحة الهبوط ومعاينات القوالب.
-- `src/components/resume-builder/ResumeEditor.tsx`: تخطيط المحرر وإعداداته.
-- `src/components/resume-builder/ResumeEditorFields.tsx`: حقول البيانات ورفع الصورة.
-- `src/components/resume-builder/LiveResumePreview.tsx`: معاينة السيرة الحية.
-- `src/features/resume-builder/model.ts`: أنواع البيانات والقوالب والقيم الافتراضية.
-- `src/features/resume-builder/store.ts`: Zustand actions والحفظ والاستعادة.
+Resume types and defaults are defined in `model.ts`. The Zustand store in `store.ts` is the source of truth for resume content and configuration, and persists the data locally. Editor fields and section controls update that store; `LiveResumePreview.tsx` reads from the same store and selects a renderer from `template-registry.ts`. Individual renderers share section, header, and ordering logic from `templates/shared-sections.tsx`.
 
-## حدود الحفظ والتصدير
+## Local Data and PDF Export
 
-الحفظ محلي في المتصفح ولا يزامن البيانات بين الأجهزة أو الحسابات. يعتمد التصدير على دعم المتصفح للطباعة إلى PDF؛ يُفضّل تفعيل طباعة الخلفيات من إعدادات الطباعة إذا أردت تضمين ألوان القالب.
-=======
-# cvg
-cv-genrator
->>>>>>> 1790a0748a3e25d271516510168d91c46ecfe533
+Saved resumes are available only in the same browser profile and device. Clearing browser storage removes the saved data. PDF export uses the browser's print dialog; choose **Save as PDF** in the dialog. Print styling targets A4, but final output can vary by browser and print settings.

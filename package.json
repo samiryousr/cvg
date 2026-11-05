@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
     "format": "oxfmt"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19.0.0",
     "oxfmt": "^0.2.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^5.1.0"
   }
 }

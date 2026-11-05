@@ -1,5 +1,5 @@
 import { getTemplateDefinition } from "@/features/resume-builder/template-registry"
-import type { ResumeTemplateProps } from "@/components/resume-builder/ResumeTemplates"
+import type { ResumeTemplateProps } from "@/components/resume-builder/templates/shared-sections"
 import {
   defaultHiddenResumeSections,
   defaultResumeSectionOrder,
