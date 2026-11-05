@@ -18,7 +18,7 @@ Resume content and preferences are stored in the browser's `localStorage`. The a
 - Arabic and English resume documents, with RTL/LTR direction handled independently from the editor interface language.
 - Editable sections, including experience, education, skills, projects, certifications, languages, awards, volunteer experience, publications, references, and custom sections.
 - Local autosave using Zustand `persist`, with defensive normalization of stored resume data.
-- Browser print flow with A4 print styles for saving a resume as PDF.
+- ATS template export uses the browser print dialog to retain selectable text in the PDF; other templates export with `html2pdf.js`. Both use A4 sizing.
 - Light and dark application themes.
 
 ## Getting Started
@@ -80,4 +80,4 @@ Resume types and defaults are defined in `model.ts`. The Zustand store in `store
 
 ## Local Data and PDF Export
 
-Saved resumes are available only in the same browser profile and device. Clearing browser storage removes the saved data. PDF export uses the browser's print dialog; choose **Save as PDF** in the dialog. Print styling targets A4, but final output can vary by browser and print settings.
+Saved resumes are available only in the same browser profile and device. Clearing browser storage removes the saved data. For ATS templates, PDF export uses the browser's print dialog; choose **Save as PDF** to retain selectable text. Other templates are generated with `html2pdf.js`. Output and pagination can vary by browser, fonts, and print settings.

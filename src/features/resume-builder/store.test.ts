@@ -83,6 +83,28 @@ describe("resume store persistence normalization", () => {
     expect(useResumeStore.getState().experiences).toEqual([])
   })
 
+  it("does not overwrite saved data with pre-hydration landing changes", async () => {
+    const savedValue = JSON.stringify({
+      state: {
+        personal: { name: "Saved resume" },
+        colorMode: "light",
+      },
+      version: 2,
+    })
+    localStorage.setItem("sirti-resume", savedValue)
+
+    useResumeStore.getState().setColorMode("dark")
+    await vi.runAllTimersAsync()
+
+    expect(localStorage.getItem("sirti-resume")).toBe(savedValue)
+
+    await useResumeStore.persist.rehydrate()
+    await vi.runAllTimersAsync()
+
+    expect(useResumeStore.getState().personal.name).toBe("Saved resume")
+    expect(useResumeStore.getState().colorMode).toBe("light")
+  })
+
   it("migrates valid legacy data and fills missing fields", async () => {
     await hydrateState(
       {

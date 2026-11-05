@@ -63,6 +63,9 @@ const debouncedLocalStorage = {
   getItem: (name: string) => localStorage.getItem(name),
 
   setItem: (name: string, value: string) => {
+    // Landing-page store changes must not overwrite saved data before editor hydration.
+    if (!useResumeStore.getState().hasHydrated) return
+
     useResumeSaveStatus.setState({ status: "saving" })
 
     const pending = pendingStorageWrites.get(name)

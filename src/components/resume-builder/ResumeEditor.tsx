@@ -88,12 +88,10 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     exportFailed: isArabic
       ? "تعذر إنشاء ملف PDF. حاول مرة أخرى."
       : "Could not generate the PDF. Please try again.",
-    checkingAts: isArabic
-      ? "جارٍ فحص السيرة عبر ATS"
-      : "Checking your CV with ATS",
-    atsSimulationNote: isArabic
-      ? "محاكاة مرئية وتجهيز للتنزيل، وليست نتيجة فحص حقيقية."
-      : "A visual simulation while preparing your download, not a real ATS result.",
+    printPdf: isArabic ? "طباعة / حفظ PDF" : "Print / Save PDF",
+    printPdfHint: isArabic
+      ? "استخدم نافذة الطباعة واختر الحفظ كـ PDF للاحتفاظ بنص قابل للتحديد."
+      : "Use the print dialog and choose Save as PDF to keep selectable text.",
     completion: isArabic ? "اكتمال السيرة" : "Resume completion",
     basicInformation: isArabic ? "المعلومات الأساسية" : "Basic information",
     editHint: isArabic
@@ -131,7 +129,6 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
   const [activeMobilePanel, setActiveMobilePanel] =
     useState<"form" | "preview">("form")
-  const [isCheckingAts, setIsCheckingAts] = useState(false)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [exportError, setExportError] = useState("")
 
@@ -228,7 +225,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     const previousPanel = activeMobilePanel
     const previousTitle = document.title
     const isMobile = window.matchMedia("(max-width: 520px)").matches
-    const shouldCheckAts = templateDefinition.atsOptimized === true
+    const usesNativePrint = templateDefinition.atsOptimized === true
     const resumeElement = document.querySelector<HTMLElement>(".resume-paper")
     const safeName =
       personal.name
@@ -244,6 +241,20 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     setExportError("")
     setIsExportingPdf(true)
 
+    if (usesNativePrint) {
+      document.title = `CV-${safeName}`
+      try {
+        window.print()
+      } catch (error) {
+        console.error("Could not print the ATS resume.", error)
+        setExportError(copy.exportFailed)
+      } finally {
+        document.title = previousTitle
+        setIsExportingPdf(false)
+      }
+      return
+    }
+
     if (isMobile && previousPanel !== "preview") {
       setActiveMobilePanel("preview")
       await new Promise<void>((resolve) => {
@@ -251,14 +262,6 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           window.requestAnimationFrame(() => resolve())
         })
       })
-    }
-
-    if (shouldCheckAts) {
-      setIsCheckingAts(true)
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 2000)
-      })
-      setIsCheckingAts(false)
     }
 
     const previousStyle = resumeElement.getAttribute("style")
@@ -298,7 +301,6 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
       if (previousStyle === null) resumeElement.removeAttribute("style")
       else resumeElement.setAttribute("style", previousStyle)
       document.title = previousTitle
-      setIsCheckingAts(false)
       setIsExportingPdf(false)
       if (isMobile && previousPanel !== "preview") {
         setActiveMobilePanel(previousPanel)
@@ -308,27 +310,6 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="editor-shell" dir="ltr">
-      {isCheckingAts && (
-        <div className="ats-loading-overlay" role="status" aria-live="polite">
-          <div className="ats-loading-card" dir={isArabic ? "rtl" : "ltr"}>
-            <div className="ats-animation-stage" aria-hidden="true">
-              <span className="ats-scanner-gate" />
-              <span className="ats-resume-sheet">
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-              </span>
-            </div>
-            <h2>{copy.checkingAts}</h2>
-            <p>{copy.atsSimulationNote}</p>
-            <div className="ats-progress-track" aria-hidden="true">
-              <span />
-            </div>
-          </div>
-        </div>
-      )}
       <header className="editor-header" dir="ltr">
         <div className="editor-header-identity">
           <button
@@ -393,10 +374,15 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           <button
             className="download-button"
             onClick={printResume}
-            disabled={isCheckingAts || isExportingPdf}
+            disabled={isExportingPdf}
             type="button"
+            title={templateDefinition.atsOptimized ? copy.printPdfHint : undefined}
           >
-            {isExportingPdf ? copy.exportingPdf : copy.downloadPdf}
+            {isExportingPdf
+              ? copy.exportingPdf
+              : templateDefinition.atsOptimized
+                ? copy.printPdf
+                : copy.downloadPdf}
           </button>
         </div>
       </header>

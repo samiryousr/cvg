@@ -500,19 +500,6 @@
   from { transform: translateX(220%); }
   to { transform: translateX(-120%); }
 }
-@keyframes ats-paper-pass {
-  from { transform: translateX(0); }
-  to { transform: translateX(180px); }
-}
-@keyframes ats-scan-line {
-  from { top: 5px; }
-  to { top: 84px; }
-}
-@keyframes ats-progress-fill {
-  from { width: 0; }
-  to { width: 100%; }
-}
-
 .editor-shell { min-height: 100vh; background: #e8ecea; }
 .editor-header { position: relative; background: #fff; max-width: none; padding: 0 42px; border-bottom: 1px solid #e1e5e3; }
 .home-button { padding: 8px 12px; border: 1px solid #d5dcda; border-radius: 5px; background: #fff; color: #315d53; font-size: 11px; font-weight: 700; white-space: nowrap; }
@@ -533,20 +520,6 @@
 .download-button { border-radius: 3px; padding: 10px 17px; font-size: 11px; font-weight: 700; }
 .download-button { background: #173f38; color: white; border: 1px solid #173f38; }
 .download-button:disabled { cursor: wait; opacity: .7; }
-.ats-loading-overlay { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(15, 29, 25, .58); backdrop-filter: blur(5px); }
-.ats-loading-card { width: min(100%, 390px); padding: 25px 28px 23px; border: 1px solid #e1e9e5; border-radius: 14px; background: #fff; box-shadow: 0 24px 80px rgba(8, 24, 19, .25); text-align: center; }
-.ats-animation-stage { position: relative; width: min(100%, 300px); height: 118px; margin: 0 auto 13px; overflow: hidden; border: 1px solid #e8eeeb; border-radius: 9px; background: linear-gradient(180deg, #f8fbf9, #eef4f1); }
-.ats-scanner-gate { position: absolute; z-index: 1; top: 9px; bottom: 9px; left: 64%; width: 3px; border-radius: 3px; background: #4a9a7b; box-shadow: 0 0 0 5px rgba(74, 154, 123, .1), 0 0 18px rgba(74, 154, 123, .6); }
-.ats-resume-sheet { position: absolute; top: 11px; left: calc(50% - 138px); display: flex; width: 73px; height: 94px; flex-direction: column; gap: 7px; padding: 14px 9px; border: 1px solid #dfe7e3; border-radius: 4px; background: #fff; box-shadow: 0 5px 12px rgba(34, 69, 56, .12); animation: ats-paper-pass 2s cubic-bezier(.45, 0, .35, 1) forwards; }
-.ats-resume-sheet::after { position: absolute; top: 5px; right: 0; left: 0; height: 2px; background: #e36d54; box-shadow: 0 0 8px rgba(227, 109, 84, .75); content: ""; animation: ats-scan-line 1.4s ease-in-out infinite alternate; }
-.ats-resume-sheet i { display: block; width: 100%; height: 3px; border-radius: 4px; background: #dce5e0; }
-.ats-resume-sheet i:first-child { width: 62%; height: 6px; background: #507c6d; }
-.ats-resume-sheet i:nth-child(3) { width: 82%; }
-.ats-resume-sheet i:last-child { width: 68%; }
-.ats-loading-card h2 { margin: 0; color: #203d33; font-size: 17px; font-weight: 800; }
-.ats-loading-card p { margin: 7px 0 17px; color: #728078; font-size: 11px; line-height: 1.8; }
-.ats-progress-track { height: 5px; overflow: hidden; border-radius: 9px; background: #e8efeb; }
-.ats-progress-track span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2f6b5f, #79b99a); animation: ats-progress-fill 2s ease-out forwards; }
 .editor-layout { display: grid; grid-template-columns: minmax(400px, 42%) 1fr; min-height: calc(100vh - 78px); }
 .form-panel { background: #fff; padding: 30px 44px 60px; overflow-y: auto; max-height: calc(100vh - 78px); border-right: 1px solid #dce2df; }
 .progress-row { display: flex; justify-content: space-between; font-size: 10px; color: #7c8985; }
@@ -1448,7 +1421,6 @@
     color-scheme: light;
   }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .ats-loading-overlay { display: none !important; }
   .editor-shell, .editor-layout, .preview-panel {
     display: block;
     width: 210mm;
