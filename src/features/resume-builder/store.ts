@@ -7,6 +7,7 @@ import {
   defaultResumeSectionOrder,
   emptyResume,
   initialResume,
+  legacyPreviewResume,
   type Award,
   type Certification,
   type ColorMode,
@@ -35,10 +36,10 @@ export const useResumeSaveStatus = create<{ status: ResumeSaveStatus }>(() => ({
   status: "idle",
 }))
 
-const pendingStorageWrites = new Map<
-  string,
-  { timer: ReturnType<typeof setTimeout>; value: string }
->()
+const pendingStorageWrites = new Map<string, {
+  timer: ReturnType<typeof setTimeout>
+  value: string
+}>()
 
 function flushPendingStorageWrites() {
   for (const [name, pending] of pendingStorageWrites) {
@@ -394,10 +395,7 @@ function normalizeSectionLayout(
   }
 }
 
-function normalizeResumeData(
-  value: unknown,
-  fallback: ResumeData,
-): ResumeData {
+function normalizeResumeData(value: unknown, fallback: ResumeData): ResumeData {
   const raw = isRecord(value) ? value : {}
   const rawPersonal = isRecord(raw.personal) ? raw.personal : {}
   const personal: PersonalInfo = {
@@ -416,31 +414,40 @@ function normalizeResumeData(
   }
 
   const experienceIds = new Set<string>()
-  const experiences = normalizeItems(raw.experiences, (item): Experience => ({
-    id: readId(item.id, experienceIds),
-    job: readString(item.job),
-    company: readString(item.company),
-    period: readString(item.period),
-    description: readString(item.description),
-  }))
+  const experiences = normalizeItems(
+    raw.experiences,
+    (item): Experience => ({
+      id: readId(item.id, experienceIds),
+      job: readString(item.job),
+      company: readString(item.company),
+      period: readString(item.period),
+      description: readString(item.description),
+    }),
+  )
 
   const educationIds = new Set<string>()
-  const education = normalizeItems(raw.education, (item): Education => ({
-    id: readId(item.id, educationIds),
-    degree: readString(item.degree),
-    school: readString(item.school),
-    period: readString(item.period),
-  }))
+  const education = normalizeItems(
+    raw.education,
+    (item): Education => ({
+      id: readId(item.id, educationIds),
+      degree: readString(item.degree),
+      school: readString(item.school),
+      period: readString(item.period),
+    }),
+  )
 
   const projectIds = new Set<string>()
-  const projects = normalizeItems(raw.projects, (item): Project => ({
-    id: readId(item.id, projectIds),
-    name: readString(item.name),
-    stack: readString(item.stack),
-    period: readString(item.period),
-    description: readString(item.description),
-    url: readString(item.url),
-  }))
+  const projects = normalizeItems(
+    raw.projects,
+    (item): Project => ({
+      id: readId(item.id, projectIds),
+      name: readString(item.name),
+      stack: readString(item.stack),
+      period: readString(item.period),
+      description: readString(item.description),
+      url: readString(item.url),
+    }),
+  )
 
   const certificationIds = new Set<string>()
   const certifications = normalizeItems(
@@ -454,20 +461,26 @@ function normalizeResumeData(
   )
 
   const languageIds = new Set<string>()
-  const languages = normalizeItems(raw.languages, (item): ResumeLanguage => ({
-    id: readId(item.id, languageIds),
-    name: readString(item.name),
-    proficiency: readString(item.proficiency),
-  }))
+  const languages = normalizeItems(
+    raw.languages,
+    (item): ResumeLanguage => ({
+      id: readId(item.id, languageIds),
+      name: readString(item.name),
+      proficiency: readString(item.proficiency),
+    }),
+  )
 
   const awardIds = new Set<string>()
-  const awards = normalizeItems(raw.awards, (item): Award => ({
-    id: readId(item.id, awardIds),
-    title: readString(item.title),
-    issuer: readString(item.issuer),
-    date: readString(item.date),
-    description: readString(item.description),
-  }))
+  const awards = normalizeItems(
+    raw.awards,
+    (item): Award => ({
+      id: readId(item.id, awardIds),
+      title: readString(item.title),
+      issuer: readString(item.issuer),
+      date: readString(item.date),
+      description: readString(item.description),
+    }),
+  )
 
   const volunteerIds = new Set<string>()
   const volunteerExperiences = normalizeItems(
@@ -547,8 +560,9 @@ function normalizeResumeData(
   return {
     personal,
     summary: readString(raw.summary, fallback.summary),
-    experiences:
-      Array.isArray(raw.experiences) ? experiences : fallback.experiences,
+    experiences: Array.isArray(raw.experiences)
+      ? experiences
+      : fallback.experiences,
     education: Array.isArray(raw.education) ? education : fallback.education,
     projects: Array.isArray(raw.projects) ? projects : fallback.projects,
     certifications: Array.isArray(raw.certifications)
@@ -565,7 +579,9 @@ function normalizeResumeData(
     publications: Array.isArray(raw.publications)
       ? publications
       : fallback.publications,
-    references: Array.isArray(raw.references) ? references : fallback.references,
+    references: Array.isArray(raw.references)
+      ? references
+      : fallback.references,
     customSections: effectiveCustomSections,
     sectionLayout: normalizeSectionLayout(
       raw.sectionLayout,
@@ -593,6 +609,137 @@ function normalizeResumeData(
         ? raw.editorLanguage
         : fallback.editorLanguage,
   }
+}
+
+function clearMatchingPreviewValues<T extends object>(value: T, sample: T): T {
+  const cleaned: T = { ...value }
+  const keys = Object.keys(sample) as Array<keyof T>
+
+  for (const key of keys) {
+    const currentValue = cleaned[key]
+    const sampleValue = sample[key]
+    if (
+      key !== "id" &&
+      typeof currentValue === "string" &&
+      currentValue === sampleValue
+    ) {
+      Reflect.set(cleaned, key, "")
+    }
+  }
+
+  return cleaned
+}
+
+function stripPreviewItems<T extends { id: string }>(
+  items: T[],
+  samples: T[],
+): T[] {
+  return items.flatMap((item) => {
+    const sample = samples.find((candidate) => candidate.id === item.id)
+    if (!sample) return [item]
+
+    const cleaned = clearMatchingPreviewValues(item, sample)
+    const hasUserValues = Object.entries(cleaned).some(
+      ([key, value]) =>
+        key !== "id" && typeof value === "string" && value.trim().length > 0,
+    )
+
+    return hasUserValues ? [cleaned] : []
+  })
+}
+
+function stripPreviewResume(resume: ResumeData): ResumeData {
+  const sampleCollections = [
+    legacyPreviewResume.experiences,
+    legacyPreviewResume.education,
+    legacyPreviewResume.projects,
+    legacyPreviewResume.certifications,
+    legacyPreviewResume.languages,
+    legacyPreviewResume.awards,
+    legacyPreviewResume.volunteerExperiences,
+    legacyPreviewResume.publications,
+    legacyPreviewResume.references,
+  ]
+  const savedCollections = [
+    resume.experiences,
+    resume.education,
+    resume.projects,
+    resume.certifications,
+    resume.languages,
+    resume.awards,
+    resume.volunteerExperiences,
+    resume.publications,
+    resume.references,
+  ]
+  const hasSampleRecord = sampleCollections.some((samples, index) =>
+    savedCollections[index].some((item) =>
+      samples.some((sample) => sample.id === item.id),
+    ),
+  )
+  const hasPreviewSignature =
+    resume.personal.name === legacyPreviewResume.personal.name ||
+    resume.personal.email === legacyPreviewResume.personal.email ||
+    resume.summary === legacyPreviewResume.summary ||
+    hasSampleRecord
+
+  if (!hasPreviewSignature) return resume
+
+  const personal = clearMatchingPreviewValues(
+    resume.personal,
+    legacyPreviewResume.personal,
+  )
+
+  const cleaned: ResumeData = {
+    ...resume,
+    personal,
+    summary:
+      resume.summary === legacyPreviewResume.summary ? "" : resume.summary,
+    experiences: stripPreviewItems(
+      resume.experiences,
+      legacyPreviewResume.experiences,
+    ),
+    education: stripPreviewItems(
+      resume.education,
+      legacyPreviewResume.education,
+    ),
+    projects: stripPreviewItems(resume.projects, legacyPreviewResume.projects),
+    certifications: stripPreviewItems(
+      resume.certifications,
+      legacyPreviewResume.certifications,
+    ),
+    skills: resume.skills.filter(
+      (skill) => !legacyPreviewResume.skills.includes(skill),
+    ),
+    languages: stripPreviewItems(
+      resume.languages,
+      legacyPreviewResume.languages,
+    ),
+    awards: stripPreviewItems(resume.awards, legacyPreviewResume.awards),
+    volunteerExperiences: stripPreviewItems(
+      resume.volunteerExperiences,
+      legacyPreviewResume.volunteerExperiences,
+    ),
+    publications: stripPreviewItems(
+      resume.publications,
+      legacyPreviewResume.publications,
+    ),
+    references: stripPreviewItems(
+      resume.references,
+      legacyPreviewResume.references,
+    ),
+  }
+
+  if (
+    JSON.stringify(resume.sectionLayout) ===
+    JSON.stringify(legacyPreviewResume.sectionLayout)
+  ) {
+    cleaned.sectionLayout = {
+      order: [...emptyResume.sectionLayout.order],
+      hidden: [...emptyResume.sectionLayout.hidden],
+    }
+  }
+
+  return cleaned
 }
 
 export const useResumeStore = create<ResumeStore>()(
@@ -1419,7 +1566,7 @@ export const useResumeStore = create<ResumeStore>()(
     {
       name: "sirti-resume",
 
-      version: 2,
+      version: 5,
 
       storage: createJSONStorage(() => debouncedLocalStorage),
 
@@ -1465,8 +1612,10 @@ export const useResumeStore = create<ResumeStore>()(
         documentLanguage: state.documentLanguage,
       }),
 
-      migrate: (persistedState) =>
-        normalizeResumeData(persistedState, emptyResume),
+      migrate: (persistedState) => {
+        const resume = normalizeResumeData(persistedState, emptyResume)
+        return stripPreviewResume(resume)
+      },
 
       merge: (persistedState, currentState) =>
         persistedState === undefined

@@ -10,6 +10,7 @@ import {
   normalizeTemplateId,
   templateRegistryEntries,
 } from "@/features/resume-builder/template-registry"
+import { hasResumeContent } from "@/features/resume-builder/model"
 import {
   ProfilePhotoField,
   SummaryField,
@@ -72,6 +73,8 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
   const saveStatus = useResumeSaveStatus((state) => state.status)
 
+  const hasUserResumeContent = useResumeStore(hasResumeContent)
+
   const copy = {
     saved: isArabic ? "محفوظ تلقائيًا على هذا الجهاز" : "Saved on this device",
     saving: isArabic ? "جارٍ حفظ التغييرات..." : "Saving changes...",
@@ -88,6 +91,9 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     exportFailed: isArabic
       ? "تعذر إنشاء ملف PDF. حاول مرة أخرى."
       : "Could not generate the PDF. Please try again.",
+    addDetailsBeforeExport: isArabic
+      ? "أضف بعض بياناتك قبل تصدير السيرة الذاتية."
+      : "Add some of your own details before exporting your resume.",
     printPdf: isArabic ? "طباعة / حفظ PDF" : "Print / Save PDF",
     printPdfHint: isArabic
       ? "استخدم نافذة الطباعة واختر الحفظ كـ PDF للاحتفاظ بنص قابل للتحديد."
@@ -222,6 +228,11 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const printResume = async () => {
     if (isExportingPdf) return
 
+    if (!hasUserResumeContent) {
+      setExportError(copy.addDetailsBeforeExport)
+      return
+    }
+
     const previousPanel = activeMobilePanel
     const previousTitle = document.title
     const isMobile = window.matchMedia("(max-width: 520px)").matches
@@ -289,6 +300,30 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
             useCORS: true,
             backgroundColor: "#ffffff",
             windowWidth: 1024,
+            onclone: (clonedDocument: Document) => {
+              clonedDocument
+                .querySelectorAll('[data-placeholder-only="true"]')
+                .forEach((element) => element.remove())
+              clonedDocument
+                .querySelectorAll(".resume-live-placeholder")
+                .forEach((element) => element.remove())
+              clonedDocument
+                .querySelectorAll("article.resume-item")
+                .forEach((item) => {
+                  if (!item.textContent?.trim()) item.remove()
+                })
+              clonedDocument
+                .querySelectorAll(".resume-section-shell")
+                .forEach((shell) => {
+                  const section = shell.querySelector(".resume-section")
+                  const heading =
+                    section?.querySelector("h2")?.textContent ?? ""
+                  const content = (section?.textContent ?? "")
+                    .replace(heading, "")
+                    .trim()
+                  if (section && !content) shell.remove()
+                })
+            },
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         })
@@ -323,7 +358,9 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           <div className="editor-document-title" dir={isArabic ? "rtl" : "ltr"}>
             <strong>{personal.name.trim() || copy.newResume}</strong>
             <span
-              className={`save-state${saveStatus === "saving" ? " saving" : ""}`}
+              className={`save-state${
+                saveStatus === "saving" ? " saving" : ""
+              }`}
               role="status"
               aria-live="polite"
             >
@@ -376,7 +413,9 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
             onClick={printResume}
             disabled={isExportingPdf}
             type="button"
-            title={templateDefinition.atsOptimized ? copy.printPdfHint : undefined}
+            title={
+              templateDefinition.atsOptimized ? copy.printPdfHint : undefined
+            }
           >
             {isExportingPdf
               ? copy.exportingPdf

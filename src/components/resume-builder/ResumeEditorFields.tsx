@@ -10,6 +10,7 @@ import type {
   PersonalInfo,
   Project,
 } from "@/features/resume-builder/model"
+import { previewResume } from "@/features/resume-builder/model"
 import { useResumeStore } from "@/features/resume-builder/store"
 
 function useEditorCopy() {
@@ -37,11 +38,11 @@ function useEditorCopy() {
         projectTitle: "مشروع",
         certificationTitle: "شهادة مهنية",
         remove: "حذف",
-        fullNamePlaceholder: "مثال: سارة أحمد",
-        rolePlaceholder: "مثال: مهندسة برمجيات",
-        emailPlaceholder: "name@example.com",
-        phonePlaceholder: "مثال: +20 100 123 4567",
-        locationPlaceholder: "مثال: القاهرة، مصر",
+        fullNamePlaceholder: "مثال: Alex Morgan",
+        rolePlaceholder: "مثال: Frontend Developer",
+        emailPlaceholder: "alex.morgan@example.com",
+        phonePlaceholder: "مثال: +1 (212) 555-0142",
+        locationPlaceholder: "مثال: Austin, TX",
         githubPlaceholder: "https://github.com/username",
         linkedInPlaceholder: "https://linkedin.com/in/username",
         portfolioPlaceholder: "https://example.com",
@@ -94,11 +95,11 @@ function useEditorCopy() {
         projectTitle: "Project",
         certificationTitle: "Certification",
         remove: "Remove",
-        fullNamePlaceholder: "Example: Sara Ahmed",
-        rolePlaceholder: "Example: Software Engineer",
-        emailPlaceholder: "name@example.com",
-        phonePlaceholder: "Example: +1 555 123 4567",
-        locationPlaceholder: "Example: Cairo, Egypt",
+        fullNamePlaceholder: "Example: Alex Morgan",
+        rolePlaceholder: "Example: Frontend Developer",
+        emailPlaceholder: "alex.morgan@example.com",
+        phonePlaceholder: "Example: +1 (212) 555-0142",
+        locationPlaceholder: "Example: Austin, TX",
         githubPlaceholder: "https://github.com/username",
         linkedInPlaceholder: "https://linkedin.com/in/username",
         portfolioPlaceholder: "https://example.com",
@@ -257,11 +258,7 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.job}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
-            placeholder={
-              isArabic
-                ? "مثال: مهندس واجهات أمامية"
-                : "Example: Frontend Engineer"
-            }
+            placeholder={previewResume.experiences[0].job}
             value={experience.job}
             onChange={(event) =>
               updateExperience(experience.id, { job: event.target.value })
@@ -272,9 +269,7 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.company}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
-            placeholder={
-              isArabic ? "مثال: شركة تقنية" : "Example: Acme Technologies"
-            }
+            placeholder={previewResume.experiences[0].company}
             value={experience.company}
             onChange={(event) =>
               updateExperience(experience.id, { company: event.target.value })
@@ -285,6 +280,7 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.period}</span>
           <input
             dir="ltr"
+            placeholder={previewResume.experiences[0].period}
             value={experience.period}
             onChange={(event) =>
               updateExperience(experience.id, { period: event.target.value })
@@ -295,7 +291,9 @@ export const ExperienceFields = memo(function ExperienceFields({
           <span>{copy.achievements}</span>
           <textarea
             dir={isArabic ? "rtl" : "ltr"}
-            placeholder={copy.achievementPlaceholder}
+            placeholder={
+              previewResume.experiences[0].description.split("\n")[0]
+            }
             value={experience.description}
             onChange={(event) =>
               updateExperience(experience.id, {
@@ -362,6 +360,7 @@ export const EducationFields = memo(function EducationFields({
           <span>{copy.year}</span>
           <input
             dir="ltr"
+            placeholder={previewResume.education[0].period}
             value={education.period}
             onChange={(event) =>
               updateEducation(education.id, { period: event.target.value })
@@ -400,7 +399,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.projectName}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
-            placeholder={copy.projectPlaceholder}
+            placeholder={previewResume.projects[0].name}
             value={project.name}
             onChange={(event) =>
               updateProject(project.id, { name: event.target.value })
@@ -411,7 +410,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.stack}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
-            placeholder={copy.stackPlaceholder}
+            placeholder={previewResume.projects[0].stack}
             value={project.stack}
             onChange={(event) =>
               updateProject(project.id, { stack: event.target.value })
@@ -422,6 +421,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.period}</span>
           <input
             dir="ltr"
+            placeholder={previewResume.projects[0].period}
             value={project.period}
             onChange={(event) =>
               updateProject(project.id, { period: event.target.value })
@@ -432,7 +432,7 @@ export const ProjectFields = memo(function ProjectFields({
           <span>{copy.projectDetails}</span>
           <textarea
             dir={isArabic ? "rtl" : "ltr"}
-            placeholder={copy.projectDetailsPlaceholder}
+            placeholder={previewResume.projects[0].description}
             value={project.description}
             onChange={(event) =>
               updateProject(project.id, { description: event.target.value })
@@ -444,7 +444,7 @@ export const ProjectFields = memo(function ProjectFields({
           <input
             type="url"
             dir="ltr"
-            placeholder={copy.urlPlaceholder}
+            placeholder={previewResume.projects[0].url}
             value={project.url}
             onChange={(event) =>
               updateProject(project.id, { url: event.target.value })

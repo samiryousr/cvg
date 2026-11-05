@@ -26,6 +26,25 @@ export type ResumeTemplateProps = Pick<ResumeData, "personal" | "summary" | "exp
   primaryColor: string
 
   documentLanguage: ResumeDocumentLanguage
+
+  placeholderFields: ReadonlySet<string>
+}
+
+function placeholderClass(
+  placeholderFields: ReadonlySet<string>,
+  path: string,
+) {
+  return placeholderFields.has(path) ? "resume-live-placeholder" : undefined
+}
+
+function isOnlyPlaceholderContent(
+  placeholderFields: ReadonlySet<string>,
+  fields: Array<string | false>,
+) {
+  const paths = fields.filter(
+    (path): path is string => typeof path === "string",
+  )
+  return paths.length > 0 && paths.every((path) => placeholderFields.has(path))
 }
 
 type ResumeLabels = {
@@ -174,10 +193,14 @@ function ResumeContact({
   personal,
 
   labels,
+
+  placeholderFields,
 }: {
   personal: PersonalInfo
 
   labels: ResumeLabels
+
+  placeholderFields: ReadonlySet<string>
 }) {
   const contacts = [
     personal.phone && {
@@ -186,6 +209,8 @@ function ResumeContact({
       value: personal.phone,
 
       dir: "auto",
+
+      path: "phone",
     },
 
     personal.email && {
@@ -196,6 +221,8 @@ function ResumeContact({
       href: `mailto:${personal.email}`,
 
       dir: "ltr",
+
+      path: "email",
     },
 
     personal.location && {
@@ -204,6 +231,8 @@ function ResumeContact({
       value: personal.location,
 
       dir: "auto",
+
+      path: "location",
     },
 
     personal.github && {
@@ -214,6 +243,8 @@ function ResumeContact({
       href: getExternalUrl(personal.github),
 
       dir: "ltr",
+
+      path: "github",
     },
 
     personal.linkedIn && {
@@ -224,6 +255,8 @@ function ResumeContact({
       href: getExternalUrl(personal.linkedIn),
 
       dir: "ltr",
+
+      path: "linkedIn",
     },
 
     personal.portfolio && {
@@ -234,6 +267,8 @@ function ResumeContact({
       href: getExternalUrl(personal.portfolio),
 
       dir: "ltr",
+
+      path: "portfolio",
     },
   ].filter((contact) => contact && hasValue(contact.value))
 
@@ -247,7 +282,14 @@ function ResumeContact({
         const label = contact.label
 
         return (
-          <span key={`${label}-${index}`} dir={contact.dir}>
+          <span
+            key={`${label}-${index}`}
+            dir={contact.dir}
+            className={placeholderClass(
+              placeholderFields,
+              `personal.${contact.path}`,
+            )}
+          >
             {label}:{" "}
             {contact.href ? (
               <a
@@ -312,13 +354,33 @@ export function ResumeHeader({
     >
       {showPhoto && <ResumePhoto personal={personal} />}
       <div className="resume-heading-copy">
-        {hasValue(personal.name) && <h1 dir="auto">{personal.name.trim()}</h1>}
+        {hasValue(personal.name) && (
+          <h1
+            dir="auto"
+            className={placeholderClass(
+              props.placeholderFields,
+              "personal.name",
+            )}
+          >
+            {personal.name.trim()}
+          </h1>
+        )}
         {hasValue(personal.role) && (
-          <p className="resume-role" dir="auto" style={{ color: primaryColor }}>
+          <p
+            className={`resume-role ${
+              placeholderClass(props.placeholderFields, "personal.role") ?? ""
+            }`}
+            dir="auto"
+            style={{ color: primaryColor }}
+          >
             {personal.role.trim()}
           </p>
         )}
-        <ResumeContact personal={personal} labels={labels} />
+        <ResumeContact
+          personal={personal}
+          labels={labels}
+          placeholderFields={props.placeholderFields}
+        />
       </div>
     </header>
   )
@@ -357,12 +419,16 @@ function SummarySection({
   accent,
 
   className,
+
+  placeholderFields,
 }: Pick<ResumeTemplateProps, "summary" | "primaryColor"> & {
   labels: ResumeLabels
 
   accent?: string
 
   className?: string
+
+  placeholderFields: ReadonlySet<string>
 }) {
   if (!hasValue(summary)) return null
 
@@ -372,7 +438,10 @@ function SummarySection({
       accent={accent ?? "#2f6b5f"}
       className={className}
     >
-      <p className="summary" dir="auto">
+      <p
+        className={`summary ${placeholderClass(placeholderFields, "summary") ?? ""}`}
+        dir="auto"
+      >
         {summary.trim()}
       </p>
     </ResumeSection>
@@ -385,12 +454,16 @@ function ExperienceSection({
   labels,
 
   accent,
+
+  placeholderFields,
 }: {
   experiences: Experience[]
 
   labels: ResumeLabels
 
   accent: string
+
+  placeholderFields: ReadonlySet<string>
 }) {
   const entries = experiences.filter((item) =>
     [item.job, item.company, item.period, item.description].some(hasValue),
@@ -400,40 +473,83 @@ function ExperienceSection({
 
   return (
     <ResumeSection title={labels.experience} accent={accent}>
-      {entries.map((experience) => (
-        <article className="resume-item" key={experience.id}>
-          <div className="resume-item-copy">
-            {hasValue(experience.job) && (
-              <h3 dir="auto">{experience.job.trim()}</h3>
+      {entries.map((experience) => {
+        const experienceIndex = experiences.findIndex(
+          (item) => item.id === experience.id,
+        )
+        return (
+          <article
+            className="resume-item"
+            data-placeholder-only={isOnlyPlaceholderContent(placeholderFields, [
+              hasValue(experience.job) && `experiences.${experienceIndex}.job`,
+              hasValue(experience.company) &&
+                `experiences.${experienceIndex}.company`,
+              hasValue(experience.period) &&
+                `experiences.${experienceIndex}.period`,
+              hasValue(experience.description) &&
+                `experiences.${experienceIndex}.description`,
+            ])}
+            key={experience.id}
+          >
+            <div className="resume-item-copy">
+              {hasValue(experience.job) && (
+                <h3
+                  dir="auto"
+                  className={placeholderClass(
+                    placeholderFields,
+                    `experiences.${experienceIndex}.job`,
+                  )}
+                >
+                  {experience.job.trim()}
+                </h3>
+              )}
+              {hasValue(experience.company) && (
+                <b
+                  dir="auto"
+                  className={placeholderClass(
+                    placeholderFields,
+                    `experiences.${experienceIndex}.company`,
+                  )}
+                >
+                  {experience.company.trim()}
+                </b>
+              )}
+              {hasValue(experience.description) && (
+                <ul className="resume-bullets" dir="auto">
+                  {experience.description
+                    .split(/\r?\n/)
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                    .map((item, bulletIndex) => (
+                      <li
+                        key={`${experience.id}-achievement-${bulletIndex}`}
+                        className={placeholderClass(
+                          placeholderFields,
+                          `experiences.${experienceIndex}.description`,
+                        )}
+                      >
+                        {item.replace(/^[-•]\s*/, "")}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+            {hasValue(experience.period) && (
+              <span
+                className={`resume-period ${
+                  placeholderClass(
+                    placeholderFields,
+                    `experiences.${experienceIndex}.period`,
+                  ) ?? ""
+                }`}
+                dir="auto"
+              >
+                {experience.period.trim()}
+              </span>
             )}
-            {hasValue(experience.company) && (
-              <b dir="auto">{experience.company.trim()}</b>
-            )}
-            {hasValue(experience.description) && (
-              <ul className="resume-bullets" dir="auto">
-                {experience.description
-
-                  .split(/\r?\n/)
-
-                  .map((item) => item.trim())
-
-                  .filter(Boolean)
-
-                  .map((item, index) => (
-                    <li key={`${experience.id}-achievement-${index}`}>
-                      {item.replace(/^[-•]\s*/, "")}
-                    </li>
-                  ))}
-              </ul>
-            )}
-          </div>
-          {hasValue(experience.period) && (
-            <span className="resume-period" dir="auto">
-              {experience.period.trim()}
-            </span>
-          )}
-        </article>
-      ))}
+          </article>
+        )
+      })}
     </ResumeSection>
   )
 }
@@ -444,12 +560,16 @@ function ProjectSection({
   labels,
 
   accent,
+
+  placeholderFields,
 }: {
   projects: Project[]
 
   labels: ResumeLabels
 
   accent: string
+
+  placeholderFields: ReadonlySet<string>
 }) {
   const entries = projects.filter((item) =>
     [item.name, item.stack, item.period, item.description, item.url].some(
@@ -462,53 +582,110 @@ function ProjectSection({
   return (
     <ResumeSection title={labels.projects} accent={accent}>
       <div className="resume-project-list">
-        {entries.map((project) => (
-          <article className="resume-item resume-project" key={project.id}>
-            <div className="resume-item-copy">
-              {hasValue(project.name) && (
-                <h3 dir="auto">{project.name.trim()}</h3>
+        {entries.map((project) => {
+          const projectIndex = projects.findIndex(
+            (item) => item.id === project.id,
+          )
+          return (
+            <article
+              className="resume-item resume-project"
+              data-placeholder-only={isOnlyPlaceholderContent(
+                placeholderFields,
+                [
+                  hasValue(project.name) && `projects.${projectIndex}.name`,
+                  hasValue(project.stack) && `projects.${projectIndex}.stack`,
+                  hasValue(project.period) && `projects.${projectIndex}.period`,
+                  hasValue(project.description) &&
+                    `projects.${projectIndex}.description`,
+                  hasValue(project.url) && `projects.${projectIndex}.url`,
+                ],
               )}
-              {hasValue(project.stack) && (
-                <b className="resume-project-stack" dir="auto">
-                  {project.stack.trim()}
-                </b>
-              )}
-              {hasValue(project.description) && (
-                <ul className="resume-bullets" dir="auto">
-                  {project.description
-
-                    .split(/\r?\n/)
-
-                    .map((item) => item.trim())
-
-                    .filter(Boolean)
-
-                    .map((item, index) => (
-                      <li key={`${project.id}-detail-${index}`}>
-                        {item.replace(/^[-•]\s*/, "")}
-                      </li>
-                    ))}
-                </ul>
-              )}
-              {hasValue(project.url) && (
-                <p className="resume-project-url" dir="ltr">
-                  <a
-                    href={getExternalUrl(project.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+              key={project.id}
+            >
+              <div className="resume-item-copy">
+                {hasValue(project.name) && (
+                  <h3
+                    dir="auto"
+                    className={placeholderClass(
+                      placeholderFields,
+                      `projects.${projectIndex}.name`,
+                    )}
                   >
-                    {project.url.trim()}
-                  </a>
-                </p>
+                    {project.name.trim()}
+                  </h3>
+                )}
+                {hasValue(project.stack) && (
+                  <b
+                    className={`resume-project-stack ${
+                      placeholderClass(
+                        placeholderFields,
+                        `projects.${projectIndex}.stack`,
+                      ) ?? ""
+                    }`}
+                    dir="auto"
+                  >
+                    {project.stack.trim()}
+                  </b>
+                )}
+                {hasValue(project.description) && (
+                  <ul className="resume-bullets" dir="auto">
+                    {project.description
+
+                      .split(/\r?\n/)
+
+                      .map((item) => item.trim())
+
+                      .filter(Boolean)
+
+                      .map((item, index) => (
+                        <li
+                          key={`${project.id}-detail-${index}`}
+                          className={placeholderClass(
+                            placeholderFields,
+                            `projects.${projectIndex}.description`,
+                          )}
+                        >
+                          {item.replace(/^[-•]\s*/, "")}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+                {hasValue(project.url) && (
+                  <p
+                    className={`resume-project-url ${
+                      placeholderClass(
+                        placeholderFields,
+                        `projects.${projectIndex}.url`,
+                      ) ?? ""
+                    }`}
+                    dir="ltr"
+                  >
+                    <a
+                      href={getExternalUrl(project.url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {project.url.trim()}
+                    </a>
+                  </p>
+                )}
+              </div>
+              {hasValue(project.period) && (
+                <span
+                  className={`resume-period ${
+                    placeholderClass(
+                      placeholderFields,
+                      `projects.${projectIndex}.period`,
+                    ) ?? ""
+                  }`}
+                  dir="auto"
+                >
+                  {project.period.trim()}
+                </span>
               )}
-            </div>
-            {hasValue(project.period) && (
-              <span className="resume-period" dir="auto">
-                {project.period.trim()}
-              </span>
-            )}
-          </article>
-        ))}
+            </article>
+          )
+        })}
       </div>
     </ResumeSection>
   )
@@ -520,12 +697,16 @@ function EducationSection({
   labels,
 
   accent,
+
+  placeholderFields,
 }: {
   education: Education[]
 
   labels: ResumeLabels
 
   accent: string
+
+  placeholderFields: ReadonlySet<string>
 }) {
   const entries = education.filter((item) =>
     [item.degree, item.school, item.period].some(hasValue),
@@ -535,19 +716,60 @@ function EducationSection({
 
   return (
     <ResumeSection title={labels.education} accent={accent}>
-      {entries.map((item) => (
-        <article className="resume-item" key={item.id}>
-          <div className="resume-item-copy">
-            {hasValue(item.degree) && <h3 dir="auto">{item.degree.trim()}</h3>}
-            {hasValue(item.school) && <b dir="auto">{item.school.trim()}</b>}
-          </div>
-          {hasValue(item.period) && (
-            <span className="resume-period" dir="auto">
-              {item.period.trim()}
-            </span>
-          )}
-        </article>
-      ))}
+      {entries.map((item) => {
+        const educationIndex = education.findIndex(
+          (entry) => entry.id === item.id,
+        )
+        return (
+          <article
+            className="resume-item"
+            data-placeholder-only={isOnlyPlaceholderContent(placeholderFields, [
+              hasValue(item.degree) && `education.${educationIndex}.degree`,
+              hasValue(item.school) && `education.${educationIndex}.school`,
+              hasValue(item.period) && `education.${educationIndex}.period`,
+            ])}
+            key={item.id}
+          >
+            <div className="resume-item-copy">
+              {hasValue(item.degree) && (
+                <h3
+                  dir="auto"
+                  className={placeholderClass(
+                    placeholderFields,
+                    `education.${educationIndex}.degree`,
+                  )}
+                >
+                  {item.degree.trim()}
+                </h3>
+              )}
+              {hasValue(item.school) && (
+                <b
+                  dir="auto"
+                  className={placeholderClass(
+                    placeholderFields,
+                    `education.${educationIndex}.school`,
+                  )}
+                >
+                  {item.school.trim()}
+                </b>
+              )}
+            </div>
+            {hasValue(item.period) && (
+              <span
+                className={`resume-period ${
+                  placeholderClass(
+                    placeholderFields,
+                    `education.${educationIndex}.period`,
+                  ) ?? ""
+                }`}
+                dir="auto"
+              >
+                {item.period.trim()}
+              </span>
+            )}
+          </article>
+        )
+      })}
     </ResumeSection>
   )
 }
@@ -597,6 +819,8 @@ function SkillsSection({
 
   accent,
 
+  placeholderFields,
+
   variant = "tags",
 }: {
   skills: string[]
@@ -604,6 +828,8 @@ function SkillsSection({
   labels: ResumeLabels
 
   accent: string
+
+  placeholderFields: ReadonlySet<string>
 
   variant?: "tags" | "plain" | "technical"
 }) {
@@ -615,7 +841,11 @@ function SkillsSection({
     <ResumeSection title={labels.skills} accent={accent}>
       <ul className={`resume-skills resume-skills-${variant}`}>
         {entries.map((skill, index) => (
-          <li key={`${skill}-${index}`} dir="auto">
+          <li
+            key={`${skill}-${index}`}
+            dir="auto"
+            className={placeholderClass(placeholderFields, `skills.${index}`)}
+          >
             {skill}
           </li>
         ))}
@@ -1027,6 +1257,7 @@ export function OrderedResumeSections({
                 experiences={props.experiences}
                 labels={labels}
                 accent={accent}
+                placeholderFields={props.placeholderFields}
               />
             )
 
@@ -1038,6 +1269,7 @@ export function OrderedResumeSections({
                 education={props.education}
                 labels={labels}
                 accent={accent}
+                placeholderFields={props.placeholderFields}
               />
             )
 
@@ -1049,6 +1281,7 @@ export function OrderedResumeSections({
                 skills={props.skills}
                 labels={labels}
                 accent={accent}
+                placeholderFields={props.placeholderFields}
                 variant={skillsVariant}
               />
             )
@@ -1061,6 +1294,7 @@ export function OrderedResumeSections({
                 projects={props.projects}
                 labels={labels}
                 accent={accent}
+                placeholderFields={props.placeholderFields}
               />
             )
 
@@ -1165,6 +1399,9 @@ export function OrderedResumeSections({
   )
 }
 
-export function getTemplateAccent(props: ResumeTemplateProps, fallback: string) {
+export function getTemplateAccent(
+  props: ResumeTemplateProps,
+  fallback: string,
+) {
   return props.primaryColor || fallback
 }

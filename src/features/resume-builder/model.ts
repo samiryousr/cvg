@@ -260,7 +260,7 @@ export const emptyResume: ResumeData = {
   editorLanguage: "ar",
 }
 
-export const initialResume: ResumeData = {
+export const legacyPreviewResume: ResumeData = {
   ...emptyResume,
   personal: {
     ...emptyResume.personal,
@@ -319,6 +319,14 @@ export const initialResume: ResumeData = {
       url: "alexmorgan.example.com/ui-library",
     },
   ] satisfies Project[],
+  certifications: [
+    {
+      id: "sample-certification-accessibility",
+      name: "Web Accessibility Foundations (Sample)",
+      issuer: "Example Learning",
+      period: "2023",
+    },
+  ] satisfies Certification[],
   skills: [
     "React",
     "TypeScript",
@@ -329,4 +337,147 @@ export const initialResume: ResumeData = {
     "Responsive Design",
     "UI Performance",
   ],
+  languages: [
+    {
+      id: "sample-language-english",
+      name: "English",
+      proficiency: "Fluent",
+    },
+    {
+      id: "sample-language-spanish",
+      name: "Spanish",
+      proficiency: "Conversational",
+    },
+  ] satisfies ResumeLanguage[],
+  awards: [
+    {
+      id: "sample-award-product",
+      title: "Product Collaboration Award (Sample)",
+      issuer: "Northstar Digital (Sample)",
+      date: "2023",
+      description:
+        "Recognized for cross-functional collaboration on a product usability initiative.",
+    },
+  ] satisfies Award[],
+  volunteerExperiences: [
+    {
+      id: "sample-volunteer-mentor",
+      organization: "Code Neighbors (Sample)",
+      role: "Volunteer Web Development Mentor",
+      startDate: "2021",
+      endDate: "Present",
+      description:
+        "Support early-career learners with portfolio reviews and introductory frontend workshops.",
+    },
+  ] satisfies VolunteerExperience[],
+  publications: [
+    {
+      id: "sample-publication-accessible-ui",
+      title: "Building More Accessible Interfaces (Sample)",
+      publisher: "Example Tech Journal",
+      date: "2024",
+      url: "alexmorgan.example.com/writing/accessible-interfaces",
+      description:
+        "A practical overview of accessibility checks that fit into everyday frontend development.",
+    },
+  ] satisfies Publication[],
+  references: [
+    {
+      id: "sample-reference-jordan",
+      name: "Jordan Lee (Sample)",
+      position: "Product Design Lead",
+      organization: "Northstar Digital (Sample)",
+      email: "jordan.lee@example.com",
+      phone: "+1 (212) 555-0184",
+    },
+  ] satisfies Reference[],
+  sectionLayout: {
+    order: [...defaultResumeSectionOrder],
+    hidden: [],
+  } satisfies ResumeSectionLayout,
+}
+
+export const previewResume: ResumeData = {
+  ...emptyResume,
+  personal: {
+    ...emptyResume.personal,
+    name: "Alex Morgan",
+    role: "Frontend Developer",
+  },
+  summary:
+    "Frontend Developer focused on building clear, accessible web experiences.",
+  experiences: [
+    {
+      id: "sample-experience-senior-frontend",
+      job: "Frontend Developer",
+      company: "Example Studio",
+      period: "2022 — Present",
+      description: "Built accessible interfaces with React and TypeScript.",
+    },
+  ] satisfies Experience[],
+  education: [
+    {
+      id: "sample-education-computer-science",
+      degree: "B.S. in Computer Science",
+      school: "Example University",
+      period: "2016 — 2020",
+    },
+  ] satisfies Education[],
+  projects: [
+    {
+      id: "sample-project-customer-portal",
+      name: "Customer Portal",
+      stack: "React, TypeScript",
+      period: "2024",
+      description: "Designed a responsive self-service web experience.",
+      url: "",
+    },
+  ] satisfies Project[],
+  skills: ["React", "TypeScript", "Next.js"],
+  sectionLayout: {
+    order: [...defaultResumeSectionOrder],
+    hidden: [],
+  } satisfies ResumeSectionLayout,
+}
+
+export const initialResume = emptyResume
+
+export function hasResumeContent(resume: ResumeData): boolean {
+  const fieldValuesWithoutIds = <T extends { id: string }>(items: T[]) =>
+    items.flatMap((item) =>
+      Object.entries(item)
+        .filter(([key]) => key !== "id")
+        .map(([, value]) => value),
+    )
+
+  const fieldValues = [
+    ...Object.values(resume.personal).filter(
+      (value): value is string => typeof value === "string",
+    ),
+    resume.summary,
+    ...fieldValuesWithoutIds(resume.experiences),
+    ...fieldValuesWithoutIds(resume.education),
+    ...fieldValuesWithoutIds(resume.projects),
+    ...fieldValuesWithoutIds(resume.certifications),
+    ...resume.skills,
+    ...fieldValuesWithoutIds(resume.languages),
+    ...fieldValuesWithoutIds(resume.awards),
+    ...fieldValuesWithoutIds(resume.volunteerExperiences),
+    ...fieldValuesWithoutIds(resume.publications),
+    ...fieldValuesWithoutIds(resume.references),
+    ...resume.customSections.flatMap((section) => [
+      section.title,
+      ...section.entries.flatMap((entry) => [
+        entry.title,
+        entry.subtitle,
+        entry.date,
+        entry.description,
+        ...entry.fields.flatMap((field) => [field.label, field.value]),
+      ]),
+    ]),
+  ]
+
+  return fieldValues.some(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  )
 }

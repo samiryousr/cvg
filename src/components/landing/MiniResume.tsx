@@ -96,6 +96,7 @@ export function MiniResume({ template }: { template: Template }) {
         {...sampleResume}
         primaryColor={template.accent}
         documentLanguage="en"
+        placeholderFields={new Set<string>()}
       />
     </article>
   )

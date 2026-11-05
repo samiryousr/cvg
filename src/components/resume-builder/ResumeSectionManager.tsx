@@ -9,7 +9,10 @@ import {
   ProjectFields,
 } from "@/components/resume-builder/ResumeEditorFields"
 
-import type { ResumeSectionId } from "@/features/resume-builder/model"
+import {
+  previewResume,
+  type ResumeSectionId,
+} from "@/features/resume-builder/model"
 
 import { useResumeStore } from "@/features/resume-builder/store"
 
@@ -829,6 +832,7 @@ export function ResumeSectionManager() {
                   <EntryFields
                     label={`${copy.skills} ${index + 1}`}
                     value={skill}
+                    placeholder={previewResume.skills[0]}
                     onChange={(value) =>
                       updateSkills(
                         skills.map((current, currentIndex) =>
