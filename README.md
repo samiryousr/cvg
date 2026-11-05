@@ -7,6 +7,7 @@ Sirti is a local-first resume builder for creating, editing, and printing profes
 The application has two routes:
 
 - `/` — landing page and template gallery.
+- `/templates` — full-page gallery of all available templates.
 - `/editor` — resume editor. An optional `template` query parameter selects a template, for example `/editor?template=modern`.
 
 Resume content and preferences are stored in the browser's `localStorage`. The application does not send resume data to a backend. Zustand persistence includes normalization for missing or malformed saved data to support safer hydration and backward compatibility.
@@ -15,6 +16,7 @@ Resume content and preferences are stored in the browser's `localStorage`. The a
 
 - Nine resume templates: ATS Classic, Tech / Developer, Modern Minimal, Creative / Designer, Student / Graduate, Professional Corporate, Executive, Modern, and Classic.
 - Live preview that updates as resume content changes.
+- A realistic, editable frontend developer starter resume for first-time users.
 - Arabic and English resume documents, with RTL/LTR direction handled independently from the editor interface language.
 - Editable sections, including experience, education, skills, projects, certifications, languages, awards, volunteer experience, publications, references, and custom sections.
 - Local autosave using Zustand `persist`, with defensive normalization of stored resume data.
@@ -47,13 +49,16 @@ src/
 ├── app/
 │   ├── editor/
 │   │   └── page.tsx                 Editor route and template query handling
+│   ├── templates/
+│   │   └── page.tsx                 Full-page template gallery
 │   ├── layout.tsx                   Root document, metadata, and application shell
 │   ├── page.tsx                     Landing page route
 │   └── globals.css                  Global, landing, editor, template, and print styles
 ├── components/
 │   ├── landing/
 │   │   ├── LandingPage.tsx          Landing page and template selection
-│   │   └── MiniResume.tsx           Compact template previews
+│   │   ├── MiniResume.tsx           Compact template previews
+│   │   └── TemplatesGallery.tsx     Full gallery and template selection
 │   ├── resume-builder/
 │   │   ├── templates/
 │   │   │   ├── *Template.tsx        Individual resume template components
@@ -76,7 +81,7 @@ src/
 
 ### Data and rendering flow
 
-Resume types and defaults are defined in `model.ts`. The Zustand store in `store.ts` is the source of truth for resume content and configuration, and persists the data locally. Editor fields and section controls update that store; `LiveResumePreview.tsx` reads from the same store and selects a renderer from `template-registry.ts`. Individual renderers share section, header, and ordering logic from `templates/shared-sections.tsx`.
+Resume types and the first-time sample resume are defined in `model.ts`, alongside blank defaults used when normalizing malformed or legacy persisted data. The Zustand store in `store.ts` is the source of truth for resume content and configuration, and persists the data locally. Editor fields and section controls update that store; `LiveResumePreview.tsx` reads from the same store and selects a renderer from `template-registry.ts`. Individual renderers share section, header, and ordering logic from `templates/shared-sections.tsx`.
 
 ## Local Data and PDF Export
 

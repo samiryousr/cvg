@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from "zustand/middleware"
 import {
   defaultHiddenResumeSections,
   defaultResumeSectionOrder,
+  emptyResume,
   initialResume,
   type Award,
   type Certification,
@@ -1406,35 +1407,10 @@ export const useResumeStore = create<ResumeStore>()(
 
       resetResume: () =>
         set({
-          ...initialResume,
-
-          personal: { ...initialResume.personal },
-
-          experiences: [],
-
-          education: [],
-
-          projects: [],
-
-          certifications: [],
-
-          skills: [],
-
-          languages: [],
-
-          awards: [],
-
-          volunteerExperiences: [],
-
-          publications: [],
-
-          references: [],
-
-          customSections: [],
-
+          ...emptyResume,
+          personal: { ...emptyResume.personal },
           sectionLayout: {
             order: [...defaultResumeSectionOrder],
-
             hidden: [...defaultHiddenResumeSections],
           },
         }),
@@ -1490,12 +1466,15 @@ export const useResumeStore = create<ResumeStore>()(
       }),
 
       migrate: (persistedState) =>
-        normalizeResumeData(persistedState, initialResume),
+        normalizeResumeData(persistedState, emptyResume),
 
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...normalizeResumeData(persistedState, currentState),
-      }),
+      merge: (persistedState, currentState) =>
+        persistedState === undefined
+          ? currentState
+          : {
+              ...currentState,
+              ...normalizeResumeData(persistedState, emptyResume),
+            },
 
       onRehydrateStorage: () => (_state, error) => {
         if (error) {

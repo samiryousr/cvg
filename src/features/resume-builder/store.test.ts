@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { initialResume } from "@/features/resume-builder/model"
+import {
+  emptyResume,
+  initialResume,
+} from "@/features/resume-builder/model"
 import {
   useResumeSaveStatus,
   useResumeStore,
@@ -63,11 +66,11 @@ describe("resume store persistence normalization", () => {
     await vi.runAllTimersAsync()
 
     const state = useResumeStore.getState()
-    expect(state.personal).toEqual(initialResume.personal)
-    expect(state.summary).toBe(initialResume.summary)
+    expect(state.personal).toEqual(emptyResume.personal)
+    expect(state.summary).toBe(emptyResume.summary)
     expect(state.experiences).toEqual([])
-    expect(state.customSections).toEqual([])
-    expect(state.templateId).toBe(initialResume.templateId)
+    expect(state.customSections).toEqual(emptyResume.customSections)
+    expect(state.templateId).toBe(emptyResume.templateId)
     expect(state.hasHydrated).toBe(true)
   })
 
@@ -80,7 +83,48 @@ describe("resume store persistence normalization", () => {
     await vi.runAllTimersAsync()
 
     expect(useResumeStore.getState().personal).toEqual(initialResume.personal)
+    expect(useResumeStore.getState().experiences).toEqual(
+      initialResume.experiences,
+    )
+  })
+
+  it("hydrates a complete editable starter resume for a first-time user", async () => {
+    await useResumeStore.persist.rehydrate()
+    await vi.runAllTimersAsync()
+
+    const starter = useResumeStore.getState()
+    expect(starter.personal.name).toBe("Alex Morgan")
+    expect(starter.personal.role).toBe("Frontend Developer")
+    expect(starter.personal.email).toBe("alex.morgan@example.com")
+    expect(starter.summary).toContain("React and TypeScript")
+    expect(starter.experiences.length).toBeGreaterThan(0)
+    expect(starter.education.length).toBeGreaterThan(0)
+    expect(starter.skills.length).toBeGreaterThan(0)
+    expect(starter.projects.length).toBeGreaterThan(0)
+
+    const experienceId = starter.experiences[0].id
+    starter.updatePersonal("name", "Taylor Example")
+    starter.updateSummary("An updated professional summary.")
+    starter.updateExperience(experienceId, { job: "Staff Frontend Developer" })
+    starter.removeEducation(starter.education[0].id)
+    starter.removeProject(starter.projects[0].id)
+    starter.addProject()
+
+    const updated = useResumeStore.getState()
+    expect(updated.personal.name).toBe("Taylor Example")
+    expect(updated.summary).toBe("An updated professional summary.")
+    expect(updated.experiences[0].job).toBe("Staff Frontend Developer")
+    expect(updated.education).toHaveLength(initialResume.education.length - 1)
+    expect(updated.projects).toHaveLength(initialResume.projects.length)
+    expect(updated.projects.at(-1)).toMatchObject({
+      name: "",
+      description: "",
+    })
+
+    updated.resetResume()
+    expect(useResumeStore.getState().personal).toEqual(emptyResume.personal)
     expect(useResumeStore.getState().experiences).toEqual([])
+    expect(useResumeStore.getState().projects).toEqual([])
   })
 
   it("does not overwrite saved data with pre-hydration landing changes", async () => {
@@ -116,7 +160,7 @@ describe("resume store persistence normalization", () => {
 
     const state = useResumeStore.getState()
     expect(state.personal).toEqual({
-      ...initialResume.personal,
+      ...emptyResume.personal,
       name: "Rana",
     })
     expect(state.experiences).toEqual([
@@ -128,7 +172,7 @@ describe("resume store persistence normalization", () => {
         description: "",
       },
     ])
-    expect(state.education).toEqual([])
+    expect(state.education).toEqual(emptyResume.education)
     expect(state.documentLanguage).toBe(initialResume.documentLanguage)
   })
 
@@ -176,7 +220,7 @@ describe("resume store persistence normalization", () => {
     })
     expect(state.experiences[0].id).not.toBe("12")
     expect(new Set(state.experiences.map((item) => item.id)).size).toBe(3)
-    expect(state.education).toEqual([])
+    expect(state.education).toEqual(emptyResume.education)
     expect(state.projects[0]).toMatchObject({
       name: "Portfolio",
       url: "",

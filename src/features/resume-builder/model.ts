@@ -203,7 +203,7 @@ export type ResumeConfiguration = {
 
 export type ResumeData = ResumeContent & ResumeConfiguration
 
-export const initialResume: ResumeData = {
+export const emptyResume: ResumeData = {
   personal: {
     name: "",
 
@@ -226,36 +226,107 @@ export const initialResume: ResumeData = {
 
   summary: "",
 
-  experiences: [] as Experience[],
+  experiences: [],
 
-  education: [] as Education[],
+  education: [],
 
-  projects: [] as Project[],
+  projects: [],
 
-  certifications: [] as Certification[],
+  certifications: [],
 
-  skills: [] as string[],
+  skills: [],
 
-  languages: [] as ResumeLanguage[],
+  languages: [],
 
-  awards: [] as Award[],
+  awards: [],
 
-  volunteerExperiences: [] as VolunteerExperience[],
+  volunteerExperiences: [],
 
-  publications: [] as Publication[],
+  publications: [],
 
-  references: [] as Reference[],
+  references: [],
 
-  customSections: [] as CustomResumeSection[],
+  customSections: [],
 
   sectionLayout: {
     order: [...defaultResumeSectionOrder],
     hidden: [...defaultHiddenResumeSections],
   } satisfies ResumeSectionLayout,
 
-  templateId: "ats" as TemplateId,
-  documentLanguage: "en" as ResumeDocumentLanguage,
+  templateId: "ats",
+  documentLanguage: "en",
   primaryColor: "#2f6b5f",
-  colorMode: "light" as ColorMode,
-  editorLanguage: "ar" as EditorLanguage,
+  colorMode: "light",
+  editorLanguage: "ar",
+}
+
+export const initialResume: ResumeData = {
+  ...emptyResume,
+  personal: {
+    ...emptyResume.personal,
+    name: "Alex Morgan",
+    role: "Frontend Developer",
+    email: "alex.morgan@example.com",
+    phone: "+1 (212) 555-0142",
+    location: "Austin, TX",
+    portfolio: "alexmorgan.example.com",
+  },
+  summary:
+    "Frontend Developer focused on building accessible, high-performing web applications with React and TypeScript. Experienced in turning complex product requirements into clear user experiences and reusable UI systems.",
+  experiences: [
+    {
+      id: "sample-experience-senior-frontend",
+      job: "Frontend Developer",
+      company: "Northstar Digital (Sample)",
+      period: "2022 — Present",
+      description:
+        "Built responsive product experiences with React, Next.js, and TypeScript.\nCreated reusable interface components that helped the product team deliver features more consistently.\nImproved page performance and accessibility through focused audits and iterative fixes.",
+    },
+    {
+      id: "sample-experience-frontend",
+      job: "Junior Frontend Developer",
+      company: "Brightside Labs (Sample)",
+      period: "2020 — 2022",
+      description:
+        "Developed and maintained customer-facing interfaces from design specifications.\nPartnered with design and backend teammates to ship product improvements.\nHelped improve usability by resolving common navigation and form issues.",
+    },
+  ] satisfies Experience[],
+  education: [
+    {
+      id: "sample-education-computer-science",
+      degree: "B.S. in Computer Science",
+      school: "Example State University",
+      period: "2016 — 2020",
+    },
+  ] satisfies Education[],
+  projects: [
+    {
+      id: "sample-project-customer-portal",
+      name: "Customer Portal Refresh",
+      stack: "React, TypeScript, Next.js",
+      period: "2024",
+      description:
+        "Designed and built a responsive self-service portal with clearer account workflows and accessible form patterns.",
+      url: "alexmorgan.example.com/customer-portal",
+    },
+    {
+      id: "sample-project-component-library",
+      name: "Reusable UI Component Library",
+      stack: "TypeScript, Storybook, CSS",
+      period: "2023",
+      description:
+        "Created a documented set of shared interface components to help teams build consistent product experiences.",
+      url: "alexmorgan.example.com/ui-library",
+    },
+  ] satisfies Project[],
+  skills: [
+    "React",
+    "TypeScript",
+    "Next.js",
+    "JavaScript",
+    "HTML & CSS",
+    "Accessibility",
+    "Responsive Design",
+    "UI Performance",
+  ],
 }

@@ -311,6 +311,14 @@ export function LandingPage() {
                 ›
               </button>
             </div>
+            <button
+              className="all-templates-link"
+              type="button"
+              onClick={() => router.push("/templates")}
+            >
+              عرض كل القوالب
+              <span aria-hidden="true">←</span>
+            </button>
           </div>
         </section>
 
