@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
+import { createPortal } from "react-dom"
 
 import { useAuthStore } from "@/store/useAuthStore"
 
@@ -15,6 +16,8 @@ export function NavbarAuthModal({
   onClose,
   onAuthenticated,
 }: NavbarAuthModalProps) {
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
+
   const [mode, setMode] = useState<AuthMode>("sign-in")
 
   const [name, setName] = useState("")
@@ -40,6 +43,8 @@ export function NavbarAuthModal({
   const clearMessages = useAuthStore((state) => state.clearMessages)
 
   useEffect(() => {
+    setPortalRoot(document.body)
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose()
     }
@@ -81,9 +86,11 @@ export function NavbarAuthModal({
     }
   }
 
-  return (
+  if (!portalRoot) return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-black/50 px-4 py-8 backdrop-blur-sm"
+      className="navbar-auth-overlay"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
@@ -234,6 +241,7 @@ export function NavbarAuthModal({
           </button>
         </p>
       </section>
-    </div>
+    </div>,
+    portalRoot,
   )
 }
