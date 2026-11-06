@@ -11,6 +11,7 @@ import {
   useResumeSaveStatus,
   useResumeStore,
 } from "@/features/resume-builder/store"
+import { MAX_SUMMARY_LENGTH } from "@/features/resume-builder/validation"
 
 function createMemoryStorage() {
   const values = new Map<string, string>()
@@ -67,6 +68,8 @@ describe("resume store persistence normalization", () => {
 
   afterEach(() => {
     vi.runOnlyPendingTimers()
+
+    vi.restoreAllMocks()
 
     vi.useRealTimers()
 
@@ -336,6 +339,11 @@ describe("resume store persistence normalization", () => {
 
   it("normalizes nested collections and custom sections", async () => {
     await hydrateState({
+      personal: {
+        name: "Amina\u0000 Example",
+        photoUrl: "javascript:alert(1)",
+      },
+
       experiences: [
         null,
 
@@ -387,6 +395,9 @@ describe("resume store persistence normalization", () => {
 
     const state = useResumeStore.getState()
 
+    expect(state.personal.name).toBe("Amina Example")
+    expect(state.personal.photoUrl).toBeNull()
+
     expect(state.experiences).toHaveLength(3)
 
     expect(state.experiences[0]).toMatchObject({
@@ -413,7 +424,13 @@ describe("resume store persistence normalization", () => {
       stack: "",
     })
 
-    expect(state.skills).toEqual(["TypeScript"])
+    expect(state.skills).toEqual([
+      {
+        id: "legacy-skills",
+        category: "Skills",
+        skills: "TypeScript",
+      },
+    ])
 
     expect(state.customSections).toHaveLength(2)
 
@@ -514,5 +531,153 @@ describe("resume store persistence normalization", () => {
     ])
 
     expect(state.sectionLayout.hidden).toContain("references")
+  })
+
+  it("supports adding, updating, and removing experience and education", () => {
+    const store = useResumeStore.getState()
+
+    store.addExperience()
+    store.addEducation()
+
+    const experienceId = useResumeStore.getState().experiences[0].id
+    const educationId = useResumeStore.getState().education[0].id
+
+    useResumeStore.getState().updateExperience(experienceId, {
+      job: "Frontend Engineer",
+      company: "Example Studio",
+    })
+    useResumeStore.getState().updateEducation(educationId, {
+      degree: "B.Sc. Computer Science",
+      school: "Example University",
+    })
+
+    expect(useResumeStore.getState().experiences[0]).toMatchObject({
+      id: experienceId,
+      job: "Frontend Engineer",
+      company: "Example Studio",
+    })
+    expect(useResumeStore.getState().education[0]).toMatchObject({
+      id: educationId,
+      degree: "B.Sc. Computer Science",
+      school: "Example University",
+    })
+
+    useResumeStore.getState().removeExperience(experienceId)
+    useResumeStore.getState().removeEducation(educationId)
+
+    expect(useResumeStore.getState().experiences).toEqual([])
+    expect(useResumeStore.getState().education).toEqual([])
+  })
+
+  it("adds an empty skill field so it can be filled in the editor", () => {
+    useResumeStore.getState().addSkillCategory()
+
+    expect(useResumeStore.getState().skills).toMatchObject([
+      { category: "", skills: "" },
+    ])
+
+    const category = useResumeStore.getState().skills[0]
+    useResumeStore.getState().updateSkills([
+      { ...category, category: "Languages", skills: "TypeScript" },
+    ])
+    expect(useResumeStore.getState().skills).toMatchObject([
+      { category: "Languages", skills: "TypeScript" },
+    ])
+  })
+
+  it("migrates uncategorized skill strings as a regular skills group", async () => {
+    await hydrateState({ skills: ["TypeScript", " React "] })
+
+    expect(useResumeStore.getState().skills).toEqual([
+      {
+        id: "legacy-skills",
+        category: "Skills",
+        skills: "TypeScript, React",
+      },
+    ])
+  })
+
+  it("sanitizes direct text updates, skills, colors, and profile photos", () => {
+    const store = useResumeStore.getState()
+
+    store.updatePersonal("name", "Amina\u0000 Example")
+    store.updateSummary("x".repeat(MAX_SUMMARY_LENGTH + 1))
+    store.addExperience()
+    const experienceId = useResumeStore.getState().experiences[0].id
+    useResumeStore
+      .getState()
+      .updateExperience(experienceId, { job: "Engineer\u0000" })
+    store.updateSkills([
+      {
+        id: "skill-category",
+        category: " Frontend ",
+        skills: " React\u0000, TypeScript ",
+      },
+    ])
+    store.setPrimaryColor("javascript:alert(1)")
+    store.updatePersonal("photoUrl", "javascript:alert(1)")
+
+    expect(useResumeStore.getState().personal.name).toBe("Amina Example")
+    expect(useResumeStore.getState().summary).toHaveLength(MAX_SUMMARY_LENGTH)
+    expect(useResumeStore.getState().experiences[0].job).toBe("Engineer")
+    expect(useResumeStore.getState().skills).toEqual([
+      {
+        id: "skill-category",
+        category: " Frontend ",
+        skills: " React, TypeScript ",
+      },
+    ])
+    expect(useResumeStore.getState().primaryColor).toBe(emptyResume.primaryColor)
+    expect(useResumeStore.getState().personal.photoUrl).toBeNull()
+
+    store.updateSkills([{ id: "skill-category", category: "", skills: "React" }])
+    expect(useResumeStore.getState().skills).toEqual([
+      { id: "skill-category", category: "", skills: "React" },
+    ])
+
+    store.setPrimaryColor("#123abc")
+    store.updatePersonal("photoUrl", "data:image/jpeg;base64,Zm9v")
+
+    expect(useResumeStore.getState().primaryColor).toBe("#123abc")
+    expect(useResumeStore.getState().personal.photoUrl).toBe(
+      "data:image/jpeg;base64,Zm9v",
+    )
+  })
+
+  it("reports localStorage write failures through save status", async () => {
+    const storage = createMemoryStorage()
+    const error = new Error("Storage quota exceeded")
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.stubGlobal("localStorage", {
+      ...storage,
+      setItem: () => {
+        throw error
+      },
+    })
+
+    await useResumeStore.persist.rehydrate()
+    useResumeStore.getState().updateSummary("A resume summary")
+    await vi.runAllTimersAsync()
+
+    expect(useResumeSaveStatus.getState().status).toBe("error")
+    expect(consoleError).toHaveBeenCalledWith(
+      "Could not save the resume to localStorage.",
+      error,
+    )
+  })
+
+  it("switches templates without changing resume content", () => {
+    const store = useResumeStore.getState()
+    store.updatePersonal("name", "Amina Example")
+    store.addExperience()
+
+    store.setTemplate("modern")
+
+    expect(useResumeStore.getState().templateId).toBe("modern")
+    expect(useResumeStore.getState().personal.name).toBe("Amina Example")
+    expect(useResumeStore.getState().experiences).toHaveLength(1)
+
+    store.setTemplate("classic")
+    expect(useResumeStore.getState().templateId).toBe("classic")
   })
 })

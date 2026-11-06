@@ -40,6 +40,7 @@ Other commands:
 pnpm build
 pnpm start
 pnpm format
+pnpm test
 ```
 
 ## Project Architecture
@@ -82,6 +83,8 @@ src/
 ### Data and rendering flow
 
 Resume types and the first-time sample resume are defined in `model.ts`, alongside blank defaults used when normalizing malformed or legacy persisted data. The Zustand store in `store.ts` is the source of truth for resume content and configuration, and persists the data locally. Editor fields and section controls update that store; `LiveResumePreview.tsx` reads from the same store and selects a renderer from `template-registry.ts`. Individual renderers share section, header, and ordering logic from `templates/shared-sections.tsx`.
+
+Store updates sanitize control characters and enforce text limits. Personal information validation reports missing names and malformed email addresses, and persisted profile photos are restricted to supported base64 image data URLs. Persistence migration, normalization, CRUD actions, and validation are covered by Vitest.
 
 ## Local Data and PDF Export
 

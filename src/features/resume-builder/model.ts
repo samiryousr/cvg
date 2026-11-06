@@ -126,6 +126,12 @@ export type Reference = {
   phone: string
 }
 
+export type SkillCategory = {
+  id: string
+  category: string
+  skills: string
+}
+
 export type CustomSectionField = {
   id: string
   label: string
@@ -183,7 +189,7 @@ export type ResumeContent = {
   education: Education[]
   projects: Project[]
   certifications: Certification[]
-  skills: string[]
+  skills: SkillCategory[]
   languages: ResumeLanguage[]
   awards: Award[]
   volunteerExperiences: VolunteerExperience[]
@@ -328,15 +334,22 @@ export const legacyPreviewResume: ResumeData = {
     },
   ] satisfies Certification[],
   skills: [
-    "React",
-    "TypeScript",
-    "Next.js",
-    "JavaScript",
-    "HTML & CSS",
-    "Accessibility",
-    "Responsive Design",
-    "UI Performance",
-  ],
+    {
+      id: "sample-skills-languages",
+      category: "Languages",
+      skills: "JavaScript, TypeScript, HTML, CSS",
+    },
+    {
+      id: "sample-skills-frontend",
+      category: "Frontend",
+      skills: "React, Next.js, Accessibility, Responsive Design",
+    },
+    {
+      id: "sample-skills-tools",
+      category: "Tools & Delivery",
+      skills: "Git, CI/CD, UI Performance",
+    },
+  ] satisfies SkillCategory[],
   languages: [
     {
       id: "sample-language-english",
@@ -433,7 +446,13 @@ export const previewResume: ResumeData = {
       url: "",
     },
   ] satisfies Project[],
-  skills: ["React", "TypeScript", "Next.js"],
+  skills: [
+    {
+      id: "preview-skills-frontend",
+      category: "Frontend",
+      skills: "React, TypeScript, Next.js",
+    },
+  ] satisfies SkillCategory[],
   sectionLayout: {
     order: [...defaultResumeSectionOrder],
     hidden: [],
@@ -459,7 +478,10 @@ export function hasResumeContent(resume: ResumeData): boolean {
     ...fieldValuesWithoutIds(resume.education),
     ...fieldValuesWithoutIds(resume.projects),
     ...fieldValuesWithoutIds(resume.certifications),
-    ...resume.skills,
+    ...resume.skills.flatMap((category) => [
+      category.category,
+      category.skills,
+    ]),
     ...fieldValuesWithoutIds(resume.languages),
     ...fieldValuesWithoutIds(resume.awards),
     ...fieldValuesWithoutIds(resume.volunteerExperiences),

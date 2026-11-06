@@ -79,9 +79,35 @@ describe("resume preview placeholders", () => {
     expect(preview.placeholderFields.has("experiences.0.job")).toBe(true)
     expect(preview.placeholderFields.has("education.0.degree")).toBe(true)
     expect(preview.placeholderFields.has("projects.0.name")).toBe(true)
-    expect(preview.placeholderFields.has("skills.0")).toBe(true)
+    expect(preview.placeholderFields.has("skills.0.category")).toBe(true)
+    expect(preview.placeholderFields.has("skills.0.skills")).toBe(true)
     expect(emptyResume.personal.name).toBe("")
 
     expect(emptyResume.experiences).toEqual([])
+  })
+
+  it("does not invent a category for a user-created uncategorized skills row", () => {
+    const preview = createResumePreviewData(
+      {
+        ...emptyResume,
+        skills: [
+          {
+            id: "uncategorized",
+            category: "",
+            skills: "TypeScript, React",
+          },
+        ],
+      },
+      previewResume,
+    )
+
+    expect(preview.skills).toEqual([
+      {
+        id: "uncategorized",
+        category: "",
+        skills: "TypeScript, React",
+      },
+    ])
+    expect(preview.placeholderFields.has("skills.0.category")).toBe(false)
   })
 })

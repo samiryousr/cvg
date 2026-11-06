@@ -22,12 +22,19 @@ import {
   type ResumeData,
   type ResumeDocumentLanguage,
   type ResumeSectionId,
+  type SkillCategory,
   type TemplateId,
   type VolunteerExperience,
   type ResumeLanguage,
 } from "@/features/resume-builder/model"
 
 import { normalizeTemplateId } from "@/features/resume-builder/template-registry"
+import {
+  MAX_SUMMARY_LENGTH,
+  PERSONAL_FIELD_LIMITS,
+  sanitizeResumeText,
+  sanitizeSkills,
+} from "@/features/resume-builder/validation"
 
 type Direction = -1 | 1
 type ResumeSaveStatus = "idle" | "saving" | "saved" | "error"
@@ -243,7 +250,9 @@ type ResumeActions = {
     fieldId: string,
   ) => void
 
-  updateSkills: (skills: string[]) => void
+  updateSkills: (skills: SkillCategory[]) => void
+
+  addSkillCategory: () => void
 
   moveSkill: (index: number, direction: Direction) => void
 
@@ -286,8 +295,84 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-function readString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback
+function readString(
+  value: unknown,
+  fallback = "",
+  maxLength = 10_000,
+): string {
+  return typeof value === "string"
+    ? sanitizeResumeText(value, maxLength)
+    : fallback
+}
+
+function sanitizeTextFields<T extends object>(fields: T): T {
+  const sanitized = { ...fields }
+
+  for (const [key, value] of Object.entries(fields)) {
+    if (typeof value === "string") {
+      Reflect.set(sanitized, key, sanitizeResumeText(value))
+    }
+  }
+
+  return sanitized
+}
+
+function sanitizeItems<T extends { id: string }>(items: T[]): T[] {
+  return items.map((item) => sanitizeTextFields(item))
+}
+
+function isSafeProfilePhoto(value: string | null): boolean {
+  return (
+    value === null ||
+    /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z\d+/]+={0,2}$/.test(value)
+  )
+}
+
+function normalizeSkills(value: unknown): SkillCategory[] {
+  if (!Array.isArray(value)) return []
+
+  if (value.every((skill) => typeof skill === "string")) {
+    const legacySkills = value
+      .map((skill) => sanitizeResumeText(skill, 120).trim())
+      .filter(Boolean)
+      .join(", ")
+    return legacySkills
+      ? [{ id: "legacy-skills", category: "Skills", skills: legacySkills }]
+      : []
+  }
+
+  const ids = new Set<string>()
+  const categories = value.filter(isRecord).map((rawCategory) => {
+    const skills =
+      typeof rawCategory.skills === "string"
+        ? rawCategory.skills
+        : Array.isArray(rawCategory.items)
+          ? rawCategory.items
+              .filter((skill): skill is string => typeof skill === "string")
+              .join(", ")
+          : ""
+
+    return {
+      id: readId(rawCategory.id, ids),
+      category: readString(rawCategory.category, "", 120),
+      skills: readString(skills, "", 2_000),
+    }
+  })
+
+  const legacySkills = value
+    .filter((skill): skill is string => typeof skill === "string")
+    .map((skill) => sanitizeResumeText(skill, 120).trim())
+    .filter(Boolean)
+
+  if (legacySkills.length > 0) {
+    categories.push({
+      id: readId("legacy-skills", ids),
+      category: "Skills",
+      skills: legacySkills.join(", "),
+    })
+  }
+
+  return categories
 }
 
 function readId(value: unknown, seen: Set<string>): string {
@@ -399,16 +484,50 @@ function normalizeResumeData(value: unknown, fallback: ResumeData): ResumeData {
   const raw = isRecord(value) ? value : {}
   const rawPersonal = isRecord(raw.personal) ? raw.personal : {}
   const personal: PersonalInfo = {
-    name: readString(rawPersonal.name, fallback.personal.name),
-    role: readString(rawPersonal.role, fallback.personal.role),
-    email: readString(rawPersonal.email, fallback.personal.email),
-    phone: readString(rawPersonal.phone, fallback.personal.phone),
-    location: readString(rawPersonal.location, fallback.personal.location),
-    github: readString(rawPersonal.github, fallback.personal.github),
-    linkedIn: readString(rawPersonal.linkedIn, fallback.personal.linkedIn),
-    portfolio: readString(rawPersonal.portfolio, fallback.personal.portfolio),
+    name: readString(
+      rawPersonal.name,
+      fallback.personal.name,
+      PERSONAL_FIELD_LIMITS.name,
+    ),
+    role: readString(
+      rawPersonal.role,
+      fallback.personal.role,
+      PERSONAL_FIELD_LIMITS.role,
+    ),
+    email: readString(
+      rawPersonal.email,
+      fallback.personal.email,
+      PERSONAL_FIELD_LIMITS.email,
+    ),
+    phone: readString(
+      rawPersonal.phone,
+      fallback.personal.phone,
+      PERSONAL_FIELD_LIMITS.phone,
+    ),
+    location: readString(
+      rawPersonal.location,
+      fallback.personal.location,
+      PERSONAL_FIELD_LIMITS.location,
+    ),
+    github: readString(
+      rawPersonal.github,
+      fallback.personal.github,
+      PERSONAL_FIELD_LIMITS.github,
+    ),
+    linkedIn: readString(
+      rawPersonal.linkedIn,
+      fallback.personal.linkedIn,
+      PERSONAL_FIELD_LIMITS.linkedIn,
+    ),
+    portfolio: readString(
+      rawPersonal.portfolio,
+      fallback.personal.portfolio,
+      PERSONAL_FIELD_LIMITS.portfolio,
+    ),
     photoUrl:
-      typeof rawPersonal.photoUrl === "string" || rawPersonal.photoUrl === null
+      (typeof rawPersonal.photoUrl === "string" ||
+        rawPersonal.photoUrl === null) &&
+      isSafeProfilePhoto(rawPersonal.photoUrl)
         ? rawPersonal.photoUrl
         : fallback.personal.photoUrl,
   }
@@ -559,7 +678,7 @@ function normalizeResumeData(value: unknown, fallback: ResumeData): ResumeData {
 
   return {
     personal,
-    summary: readString(raw.summary, fallback.summary),
+    summary: readString(raw.summary, fallback.summary, MAX_SUMMARY_LENGTH),
     experiences: Array.isArray(raw.experiences)
       ? experiences
       : fallback.experiences,
@@ -569,7 +688,7 @@ function normalizeResumeData(value: unknown, fallback: ResumeData): ResumeData {
       ? certifications
       : fallback.certifications,
     skills: Array.isArray(raw.skills)
-      ? raw.skills.filter((skill): skill is string => typeof skill === "string")
+      ? sanitizeSkills(normalizeSkills(raw.skills))
       : fallback.skills,
     languages: Array.isArray(raw.languages) ? languages : fallback.languages,
     awards: Array.isArray(raw.awards) ? awards : fallback.awards,
@@ -707,9 +826,32 @@ function stripPreviewResume(resume: ResumeData): ResumeData {
       resume.certifications,
       legacyPreviewResume.certifications,
     ),
-    skills: resume.skills.filter(
-      (skill) => !legacyPreviewResume.skills.includes(skill),
-    ),
+    skills: resume.skills
+      .map((category) => ({
+        ...category,
+        skills: category.skills
+          .split(/[,،]/)
+          .map((skill) => skill.trim())
+          .filter(
+            (skill) =>
+              !legacyPreviewResume.skills.some((sample) =>
+                sample.skills
+                  .split(/[,،]/)
+                  .map((sampleSkill) => sampleSkill.trim())
+                  .includes(skill),
+              ),
+          )
+          .join(", "),
+      }))
+      .filter((category) => {
+        const isSampleCategory = legacyPreviewResume.skills.some(
+          (sample) => sample.category === category.category,
+        )
+        return (
+          category.skills ||
+          (!isSampleCategory && category.category !== "Skills")
+        )
+      }),
     languages: stripPreviewItems(
       resume.languages,
       legacyPreviewResume.languages,
@@ -750,16 +892,27 @@ export const useResumeStore = create<ResumeStore>()(
       hasHydrated: false,
 
       updatePersonal: (key, value) =>
-        set((state) => ({
-          personal: { ...state.personal, [key]: value },
-        })),
+        set((state) => {
+          const safeValue =
+            key === "photoUrl"
+              ? (typeof value === "string" || value === null) &&
+                isSafeProfilePhoto(value)
+                ? value
+                : null
+              : typeof value === "string"
+                ? sanitizeResumeText(value, PERSONAL_FIELD_LIMITS[key])
+                : value
 
-      updateSummary: (summary) => set({ summary }),
+          return { personal: { ...state.personal, [key]: safeValue } }
+        }),
+
+      updateSummary: (summary) =>
+        set({ summary: sanitizeResumeText(summary, MAX_SUMMARY_LENGTH) }),
 
       updateExperience: (id, updates) =>
         set((state) => ({
           experiences: state.experiences.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -794,7 +947,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateEducation: (id, updates) =>
         set((state) => ({
           education: state.education.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -823,7 +976,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateProject: (id, updates) =>
         set((state) => ({
           projects: state.projects.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -864,7 +1017,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateCertification: (id, updates) =>
         set((state) => ({
           certifications: state.certifications.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -890,7 +1043,8 @@ export const useResumeStore = create<ResumeStore>()(
           certifications: state.certifications.filter((item) => item.id !== id),
         })),
 
-      updateLanguages: (languages) => set({ languages }),
+      updateLanguages: (languages) =>
+        set({ languages: sanitizeItems(languages) }),
 
       addLanguage: () =>
         set((state) => ({
@@ -912,7 +1066,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateLanguage: (id, updates) =>
         set((state) => ({
           languages: state.languages.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -921,7 +1075,7 @@ export const useResumeStore = create<ResumeStore>()(
           languages: state.languages.filter((item) => item.id !== id),
         })),
 
-      updateAwards: (awards) => set({ awards }),
+      updateAwards: (awards) => set({ awards: sanitizeItems(awards) }),
 
       addAward: () =>
         set((state) => ({
@@ -949,7 +1103,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateAward: (id, updates) =>
         set((state) => ({
           awards: state.awards.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -959,7 +1113,7 @@ export const useResumeStore = create<ResumeStore>()(
         })),
 
       updateVolunteerExperiences: (items) =>
-        set({ volunteerExperiences: items }),
+        set({ volunteerExperiences: sanitizeItems(items) }),
 
       addVolunteerExperience: () =>
         set((state) => ({
@@ -993,7 +1147,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateVolunteerExperience: (id, updates) =>
         set((state) => ({
           volunteerExperiences: state.volunteerExperiences.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -1004,7 +1158,8 @@ export const useResumeStore = create<ResumeStore>()(
           ),
         })),
 
-      updatePublications: (publications) => set({ publications }),
+      updatePublications: (publications) =>
+        set({ publications: sanitizeItems(publications) }),
 
       addPublication: () =>
         set((state) => ({
@@ -1038,7 +1193,7 @@ export const useResumeStore = create<ResumeStore>()(
       updatePublication: (id, updates) =>
         set((state) => ({
           publications: state.publications.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -1047,7 +1202,8 @@ export const useResumeStore = create<ResumeStore>()(
           publications: state.publications.filter((item) => item.id !== id),
         })),
 
-      updateReferences: (references) => set({ references }),
+      updateReferences: (references) =>
+        set({ references: sanitizeItems(references) }),
 
       addReference: () =>
         set((state) => ({
@@ -1081,7 +1237,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateReference: (id, updates) =>
         set((state) => ({
           references: state.references.map((item) =>
-            item.id === id ? { ...item, ...updates } : item,
+            item.id === id ? { ...item, ...sanitizeTextFields(updates) } : item,
           ),
         })),
 
@@ -1116,7 +1272,9 @@ export const useResumeStore = create<ResumeStore>()(
       updateCustomSection: (id, updates) =>
         set((state) => ({
           customSections: state.customSections.map((section) =>
-            section.id === id ? { ...section, ...updates } : section,
+            section.id === id
+              ? { ...section, ...sanitizeTextFields(updates) }
+              : section,
           ),
         })),
 
@@ -1182,7 +1340,9 @@ export const useResumeStore = create<ResumeStore>()(
                   ...section,
 
                   entries: section.entries.map((entry) =>
-                    entry.id === entryId ? { ...entry, ...updates } : entry,
+                    entry.id === entryId
+                      ? { ...entry, ...sanitizeTextFields(updates) }
+                      : entry,
                   ),
                 }
               : section,
@@ -1243,7 +1403,7 @@ export const useResumeStore = create<ResumeStore>()(
 
                           fields: entry.fields.map((field) =>
                             field.id === fieldId
-                              ? { ...field, ...updates }
+                              ? { ...field, ...sanitizeTextFields(updates) }
                               : field,
                           ),
                         }
@@ -1277,7 +1437,15 @@ export const useResumeStore = create<ResumeStore>()(
           ),
         })),
 
-      updateSkills: (skills) => set({ skills }),
+      updateSkills: (skills) => set({ skills: sanitizeSkills(skills) }),
+
+      addSkillCategory: () =>
+        set((state) => ({
+          skills: [
+            ...state.skills,
+            { id: createId(), category: "", skills: "" },
+          ],
+        })),
 
       moveSkill: (index, direction) =>
         set((state) => {
@@ -1544,7 +1712,12 @@ export const useResumeStore = create<ResumeStore>()(
       setTemplate: (templateId) =>
         set({ templateId: normalizeTemplateId(templateId, "ats") }),
 
-      setPrimaryColor: (primaryColor) => set({ primaryColor }),
+      setPrimaryColor: (primaryColor) =>
+        set({
+          primaryColor: /^#[\da-f]{6}$/i.test(primaryColor)
+            ? primaryColor
+            : emptyResume.primaryColor,
+        }),
 
       setColorMode: (colorMode) => set({ colorMode }),
 

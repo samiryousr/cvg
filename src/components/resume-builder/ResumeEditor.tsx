@@ -216,7 +216,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
       ]),
     ]),
 
-    ...skills,
+    ...skills.flatMap((category) => [category.category, category.skills]),
   ]
 
   const completion = Math.round(

@@ -12,6 +12,11 @@ import type {
 } from "@/features/resume-builder/model"
 import { previewResume } from "@/features/resume-builder/model"
 import { useResumeStore } from "@/features/resume-builder/store"
+import {
+  MAX_SUMMARY_LENGTH,
+  PERSONAL_FIELD_LIMITS,
+  validatePersonalInfo,
+} from "@/features/resume-builder/validation"
 
 function useEditorCopy() {
   const isArabic = useResumeStore((state) => state.editorLanguage === "ar")
@@ -63,6 +68,7 @@ function useEditorCopy() {
         urlPlaceholder: "https://example.com",
         optional: "اختياري",
         required: "مطلوب",
+        invalidEmail: "أدخل بريدًا إلكترونيًا صالحًا.",
         invalidImage: "اختار ملف صورة صالح.",
         imageTooLarge: "حجم الصورة لازم يكون أقل من 8 ميجابايت.",
         processingImage: "جارٍ تجهيز الصورة...",
@@ -120,6 +126,7 @@ function useEditorCopy() {
         urlPlaceholder: "https://example.com",
         optional: "Optional",
         required: "Required",
+        invalidEmail: "Enter a valid email address.",
         invalidImage: "Choose a valid image file.",
         imageTooLarge: "The image must be smaller than 8 MB.",
         processingImage: "Preparing your photo...",
@@ -154,6 +161,10 @@ export const TextField = memo(function TextField({
 
   const updatePersonal = useResumeStore((state) => state.updatePersonal)
   const isArabic = useResumeStore((state) => state.editorLanguage === "ar")
+  const emailError =
+    field === "email"
+      ? validatePersonalInfo({ name: "valid", email: value }).email
+      : undefined
   const inputType =
     field === "email"
       ? "email"
@@ -198,9 +209,16 @@ export const TextField = memo(function TextField({
         }
         placeholder={placeholders[field]}
         required={field === "name"}
+        maxLength={PERSONAL_FIELD_LIMITS[field]}
+        aria-invalid={Boolean(emailError)}
         value={value}
         onChange={(event) => updatePersonal(field, event.target.value)}
       />
+      {emailError && (
+        <small className="field-message field-error" role="alert">
+          {copy.invalidEmail}
+        </small>
+      )}
     </label>
   )
 })
@@ -220,12 +238,14 @@ export const SummaryField = memo(function SummaryField() {
       <textarea
         dir={isArabic ? "rtl" : "ltr"}
         placeholder={copy.summaryPlaceholder}
-        maxLength={500}
+        maxLength={MAX_SUMMARY_LENGTH}
         value={summary}
         onChange={(event) => updateSummary(event.target.value)}
       />
       <small className="field-guidance">{copy.summaryGuidance}</small>
-      <small>{summary.length} / 500</small>
+      <small>
+        {summary.length} / {MAX_SUMMARY_LENGTH}
+      </small>
     </label>
   )
 })
@@ -487,6 +507,7 @@ export const CertificationFields = memo(function CertificationFields({
           <span>{copy.certificationName}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.certificationName}
             value={certification.name}
             onChange={(event) =>
               updateCertification(certification.id, {
@@ -499,6 +520,7 @@ export const CertificationFields = memo(function CertificationFields({
           <span>{copy.issuer}</span>
           <input
             dir={isArabic ? "rtl" : "ltr"}
+            placeholder={copy.issuer}
             value={certification.issuer}
             onChange={(event) =>
               updateCertification(certification.id, {
@@ -511,6 +533,7 @@ export const CertificationFields = memo(function CertificationFields({
           <span>{copy.year}</span>
           <input
             dir="ltr"
+            placeholder={copy.year}
             value={certification.period}
             onChange={(event) =>
               updateCertification(certification.id, {
@@ -530,26 +553,57 @@ export const SkillsField = memo(function SkillsField() {
   const skills = useResumeStore((state) => state.skills)
 
   const updateSkills = useResumeStore((state) => state.updateSkills)
+  const addSkillCategory = useResumeStore((state) => state.addSkillCategory)
 
   return (
-    <label className="wide-field">
-      <span>{copy.skills}</span>
-      <input
-        dir={isArabic ? "rtl" : "ltr"}
-        value={skills.join(isArabic ? "، " : ", ")}
-        onChange={(event) =>
-          updateSkills(
-            event.target.value
-
-              .split(/[,،]/)
-
-              .map((skill) => skill.trim())
-
-              .filter(Boolean),
-          )
-        }
-      />
-    </label>
+    <div className="wide-field skill-category-fields">
+      <strong>{copy.skills}</strong>
+      {skills.map((category) => (
+        <div className="form-grid" key={category.id}>
+          <label>
+            <span>{isArabic ? "الفئة" : "Category"}</span>
+            <input
+              dir={isArabic ? "rtl" : "ltr"}
+              placeholder={isArabic ? "مثال: الواجهات الأمامية" : "Example: Frontend"}
+              value={category.category}
+              onChange={(event) =>
+                updateSkills(
+                  skills.map((current) =>
+                    current.id === category.id
+                      ? { ...current, category: event.target.value }
+                      : current,
+                  ),
+                )
+              }
+            />
+          </label>
+          <label>
+            <span>{isArabic ? "المهارات (افصل بينها بفاصلة)" : "Skills (comma-separated)"}</span>
+            <input
+              dir={isArabic ? "rtl" : "ltr"}
+              placeholder={
+                isArabic
+                  ? "مثال: React، TypeScript، Next.js"
+                  : "Example: React, TypeScript, Next.js"
+              }
+              value={category.skills}
+              onChange={(event) =>
+                updateSkills(
+                  skills.map((current) =>
+                    current.id === category.id
+                      ? { ...current, skills: event.target.value }
+                      : current,
+                  ),
+                )
+              }
+            />
+          </label>
+        </div>
+      ))}
+      <button className="add-item-button" type="button" onClick={addSkillCategory}>
+        {isArabic ? "+ إضافة فئة مهارات" : "+ Add skill category"}
+      </button>
+    </div>
   )
 })
 

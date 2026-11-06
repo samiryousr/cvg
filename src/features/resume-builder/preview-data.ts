@@ -1,4 +1,7 @@
-import type { ResumeData } from "@/features/resume-builder/model"
+import type {
+  ResumeData,
+  SkillCategory,
+} from "@/features/resume-builder/model"
 
 export function mergePreviewRecord<T extends object>(
   actual: T,
@@ -71,27 +74,24 @@ export function mergePreviewList<T extends { id: string }>(
 }
 
 export function mergePreviewSkills(
-  actual: string[],
+  actual: SkillCategory[],
 
-  sample: string[],
+  sample: SkillCategory[],
 
   placeholderFields: Set<string>,
 ) {
-  return Array.from(
-    { length: Math.max(actual.length, sample.length) },
+  if (actual.length > 0) return actual
 
-    (_, index) => {
-      const value = actual[index]
+  sample.forEach((category, index) => {
+    if (category.category.trim()) {
+      placeholderFields.add(`skills.${index}.category`)
+    }
+    if (category.skills.trim()) {
+      placeholderFields.add(`skills.${index}.skills`)
+    }
+  })
 
-      if (value?.trim()) return value
-
-      const sampleValue = sample[index]
-
-      if (sampleValue) placeholderFields.add(`skills.${index}`)
-
-      return sampleValue ?? value ?? ""
-    },
-  )
+  return sample
 }
 
 export function createResumePreviewData(

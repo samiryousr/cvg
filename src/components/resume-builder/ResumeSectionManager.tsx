@@ -108,7 +108,7 @@ function EntryFields({
     <textarea
       dir={direction}
       value={value}
-      placeholder={placeholder}
+      placeholder={placeholder ?? label}
       required={required}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -117,7 +117,7 @@ function EntryFields({
       type={type}
       dir={direction}
       value={value}
-      placeholder={placeholder}
+      placeholder={placeholder ?? label}
       required={required}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -250,6 +250,8 @@ export function ResumeSectionManager() {
   const moveSkill = useResumeStore((state) => state.moveSkill)
 
   const updateSkills = useResumeStore((state) => state.updateSkills)
+
+  const addSkillCategory = useResumeStore((state) => state.addSkillCategory)
 
   const moveSection = useResumeStore((state) => state.moveSection)
 
@@ -443,6 +445,16 @@ export function ResumeSectionManager() {
 
         addSkill: "+ إضافة مهارة",
 
+        addSkillCategory: "+ إضافة فئة مهارات",
+
+        skillCategory: "الفئة",
+
+        skillItems: "المهارات (افصل بينها بفاصلة)",
+
+        skillCategoryPlaceholder: "مثال: الواجهات الأمامية",
+
+        skillItemsPlaceholder: "مثال: React، TypeScript، Next.js",
+
         duplicate: "نسخ",
 
         startHere: "ابدأ هنا",
@@ -572,6 +584,16 @@ export function ResumeSectionManager() {
 
         addSkill: "+ Add skill",
 
+        addSkillCategory: "+ Add skill category",
+
+        skillCategory: "Category",
+
+        skillItems: "Skills (comma-separated)",
+
+        skillCategoryPlaceholder: "Example: Frontend",
+
+        skillItemsPlaceholder: "Example: React, TypeScript, Next.js",
+
         duplicate: "Duplicate",
 
         startHere: "Start here",
@@ -669,7 +691,9 @@ export function ResumeSectionManager() {
           (item) => item.degree.trim() && item.school.trim(),
         )
       case "skills":
-        return skills.some((skill) => skill.trim())
+        return skills.some(
+          (category) => category.category.trim() || category.skills.trim(),
+        )
       case "projects":
         return projects.some((item) => item.name.trim())
       case "certifications":
@@ -708,7 +732,7 @@ export function ResumeSectionManager() {
       case "education":
         return education.length
       case "skills":
-        return skills.filter((skill) => skill.trim()).length
+        return skills.length
       case "projects":
         return projects.length
       case "certifications":
@@ -792,15 +816,15 @@ export function ResumeSectionManager() {
       case "skills":
         return (
           <>
-            {skills.map((skill, index) => (
+            {skills.map((category, index) => (
               <div
-                className="section-entry-row skill-editor-row"
-                key={`skill-${index}`}
+                className="section-entry-row skill-category-editor-row"
+                key={category.id}
               >
                 <div className="section-entry-controls">
                   <button
                     type="button"
-                    aria-label={isArabic ? "تحريك لأعلى" : "Move up"}
+                    aria-label={isArabic ? "تحريك الفئة لأعلى" : "Move category up"}
                     disabled={index === 0}
                     onClick={() => moveSkill(index, -1)}
                   >
@@ -808,11 +832,11 @@ export function ResumeSectionManager() {
                   </button>
                   <button
                     type="button"
-                    aria-label={isArabic ? "نسخ المهارة" : "Duplicate skill"}
+                    aria-label={isArabic ? "نسخ فئة المهارات" : "Duplicate skill category"}
                     onClick={() =>
                       updateSkills([
                         ...skills.slice(0, index + 1),
-                        skill,
+                        { ...category, id: crypto.randomUUID() },
                         ...skills.slice(index + 1),
                       ])
                     }
@@ -821,7 +845,7 @@ export function ResumeSectionManager() {
                   </button>
                   <button
                     type="button"
-                    aria-label={isArabic ? "تحريك لأسفل" : "Move down"}
+                    aria-label={isArabic ? "تحريك الفئة لأسفل" : "Move category down"}
                     disabled={index === skills.length - 1}
                     onClick={() => moveSkill(index, 1)}
                   >
@@ -830,13 +854,30 @@ export function ResumeSectionManager() {
                 </div>
                 <div className="skill-editor-field">
                   <EntryFields
-                    label={`${copy.skills} ${index + 1}`}
-                    value={skill}
-                    placeholder={previewResume.skills[0]}
+                    label={copy.skillCategory}
+                    value={category.category}
+                    placeholder={copy.skillCategoryPlaceholder}
                     onChange={(value) =>
                       updateSkills(
                         skills.map((current, currentIndex) =>
-                          currentIndex === index ? value : current,
+                          currentIndex === index
+                            ? { ...current, category: value }
+                            : current,
+                        ),
+                      )
+                    }
+                    isArabic={isArabic}
+                  />
+                  <EntryFields
+                    label={copy.skillItems}
+                    value={category.skills}
+                    placeholder={copy.skillItemsPlaceholder}
+                    onChange={(value) =>
+                      updateSkills(
+                        skills.map((current, currentIndex) =>
+                          currentIndex === index
+                            ? { ...current, skills: value }
+                            : current,
                         ),
                       )
                     }
@@ -847,9 +888,7 @@ export function ResumeSectionManager() {
                     type="button"
                     onClick={() =>
                       updateSkills(
-                        skills.filter(
-                          (_, currentIndex) => currentIndex !== index,
-                        ),
+                        skills.filter((_, currentIndex) => currentIndex !== index),
                       )
                     }
                   >
@@ -861,9 +900,9 @@ export function ResumeSectionManager() {
             <button
               className="add-item-button"
               type="button"
-              onClick={() => updateSkills([...skills, ""])}
+              onClick={addSkillCategory}
             >
-              {copy.addSkill}
+              {copy.addSkillCategory}
             </button>
           </>
         )

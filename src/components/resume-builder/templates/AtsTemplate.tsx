@@ -7,21 +7,42 @@ import {
 
 export function AtsResumeTemplate(props: ResumeTemplateProps) {
   const labels = getLabels(props.documentLanguage)
-  const accent = "#263238"
+  const sectionOrder = [
+    "summary",
+    "experience",
+    "projects",
+    "skills",
+    "education",
+    "certifications",
+    "languages",
+    "awards",
+    "volunteer",
+    "publications",
+    "references",
+    ...props.customSections.map((section) => `custom:${section.id}` as const),
+  ] as const
+  const atsProps = {
+    ...props,
+    primaryColor: "#000000",
+    sectionLayout: {
+      ...props.sectionLayout,
+      order: [...new Set([...sectionOrder, ...props.sectionLayout.order])],
+    },
+  }
 
   return (
     <div className="resume-layout resume-layout-ats">
       <ResumeHeader
-        props={props}
+        props={atsProps}
         labels={labels}
         variant="ats"
         showPhoto={false}
       />
       <main className="resume-main">
         <OrderedResumeSections
-          props={props}
+          props={atsProps}
           labels={labels}
-          accent={accent}
+          accent="#000000"
           templateId="ats"
         />
       </main>

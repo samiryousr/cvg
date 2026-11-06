@@ -19,6 +19,7 @@ import type {
   TemplateId,
   ResumeSectionId,
   ResumeData,
+  SkillCategory,
   VolunteerExperience,
 } from "@/features/resume-builder/model"
 
@@ -62,6 +63,8 @@ type ResumeLabels = {
 
   portfolio: string
 
+  viewPublication: string
+
   summary: string
 
   experience: string
@@ -104,6 +107,8 @@ export function getLabels(language: ResumeDocumentLanguage): ResumeLabels {
 
       portfolio: "الموقع الشخصي",
 
+      viewPublication: "عرض المنشور",
+
       summary: "الملخص المهني",
 
       experience: "الخبرة المهنية",
@@ -144,6 +149,8 @@ export function getLabels(language: ResumeDocumentLanguage): ResumeLabels {
     linkedIn: "LinkedIn",
 
     portfolio: "Portfolio",
+
+    viewPublication: "View publication",
 
     summary: "Professional Summary",
 
@@ -195,6 +202,7 @@ function ResumeContact({
   labels,
 
   placeholderFields,
+
 }: {
   personal: PersonalInfo
 
@@ -208,6 +216,8 @@ function ResumeContact({
 
       value: personal.phone,
 
+      shortLabel: false,
+
       dir: "auto",
 
       path: "phone",
@@ -220,6 +230,8 @@ function ResumeContact({
 
       href: `mailto:${personal.email}`,
 
+      shortLabel: false,
+
       dir: "ltr",
 
       path: "email",
@@ -229,6 +241,8 @@ function ResumeContact({
       label: labels.location,
 
       value: personal.location,
+
+      shortLabel: false,
 
       dir: "auto",
 
@@ -242,6 +256,8 @@ function ResumeContact({
 
       href: getExternalUrl(personal.github),
 
+      shortLabel: true,
+
       dir: "ltr",
 
       path: "github",
@@ -254,6 +270,8 @@ function ResumeContact({
 
       href: getExternalUrl(personal.linkedIn),
 
+      shortLabel: true,
+
       dir: "ltr",
 
       path: "linkedIn",
@@ -265,6 +283,8 @@ function ResumeContact({
       value: personal.portfolio,
 
       href: getExternalUrl(personal.portfolio),
+
+      shortLabel: true,
 
       dir: "ltr",
 
@@ -280,6 +300,7 @@ function ResumeContact({
         if (!contact) return null
 
         const label = contact.label
+        const useLinkLabel = Boolean(contact.shortLabel)
 
         return (
           <span
@@ -290,7 +311,7 @@ function ResumeContact({
               `personal.${contact.path}`,
             )}
           >
-            {label}:{" "}
+            {!useLinkLabel && `${label}: `}
             {contact.href ? (
               <a
                 href={contact.href}
@@ -301,8 +322,10 @@ function ResumeContact({
                     : undefined
                 }
               >
-                {contact.value}
+                {useLinkLabel ? label : contact.value}
               </a>
+            ) : useLinkLabel ? (
+              label
             ) : (
               contact.value
             )}
@@ -586,6 +609,7 @@ function ProjectSection({
           const projectIndex = projects.findIndex(
             (item) => item.id === project.id,
           )
+          const projectUrl = getExternalUrl(project.url)
           return (
             <article
               className="resume-item resume-project"
@@ -650,7 +674,7 @@ function ProjectSection({
                       ))}
                   </ul>
                 )}
-                {hasValue(project.url) && (
+                {hasValue(project.url) && projectUrl && (
                   <p
                     className={`resume-project-url ${
                       placeholderClass(
@@ -660,13 +684,22 @@ function ProjectSection({
                     }`}
                     dir="ltr"
                   >
-                    <a
-                      href={getExternalUrl(project.url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {project.url.trim()}
-                    </a>
+                    {(() => {
+                      const hostname = new URL(projectUrl).hostname.toLowerCase()
+                      const isGitHub =
+                        hostname === "github.com" ||
+                        hostname.endsWith(".github.com")
+
+                      return (
+                        <a
+                          href={projectUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {isGitHub ? "GitHub" : "Live Demo"}
+                        </a>
+                      )
+                    })()}
                   </p>
                 )}
               </div>
@@ -699,6 +732,8 @@ function EducationSection({
   accent,
 
   placeholderFields,
+
+  compactAts = false,
 }: {
   education: Education[]
 
@@ -707,6 +742,8 @@ function EducationSection({
   accent: string
 
   placeholderFields: ReadonlySet<string>
+
+  compactAts?: boolean
 }) {
   const entries = education.filter((item) =>
     [item.degree, item.school, item.period].some(hasValue),
@@ -715,14 +752,20 @@ function EducationSection({
   if (entries.length === 0) return null
 
   return (
-    <ResumeSection title={labels.education} accent={accent}>
+    <ResumeSection
+      title={labels.education}
+      accent={accent}
+      className={compactAts ? "resume-section-education-ats" : ""}
+    >
       {entries.map((item) => {
         const educationIndex = education.findIndex(
           (entry) => entry.id === item.id,
         )
         return (
           <article
-            className="resume-item"
+            className={`resume-item resume-education-item${
+              compactAts ? " resume-education-item-ats" : ""
+            }`}
             data-placeholder-only={isOnlyPlaceholderContent(placeholderFields, [
               hasValue(item.degree) && `education.${educationIndex}.degree`,
               hasValue(item.school) && `education.${educationIndex}.school`,
@@ -730,42 +773,94 @@ function EducationSection({
             ])}
             key={item.id}
           >
-            <div className="resume-item-copy">
-              {hasValue(item.degree) && (
-                <h3
-                  dir="auto"
-                  className={placeholderClass(
-                    placeholderFields,
-                    `education.${educationIndex}.degree`,
+            {compactAts ? (
+              <div className="resume-item-copy">
+                {hasValue(item.school) && (
+                  <h3
+                    dir="auto"
+                    className={`resume-education-institution ${
+                      placeholderClass(
+                        placeholderFields,
+                        `education.${educationIndex}.school`,
+                      ) ?? ""
+                    }`}
+                  >
+                    {item.school.trim()}
+                  </h3>
+                )}
+                {(hasValue(item.degree) || hasValue(item.period)) && (
+                  <div className="resume-education-details" dir="auto">
+                    {hasValue(item.degree) && (
+                      <span
+                        className={`resume-education-degree ${
+                          placeholderClass(
+                            placeholderFields,
+                            `education.${educationIndex}.degree`,
+                          ) ?? ""
+                        }`}
+                      >
+                        {item.degree.trim()}
+                      </span>
+                    )}
+                    {hasValue(item.period) && (
+                      <span
+                        className={`resume-period resume-education-period ${
+                          placeholderClass(
+                            placeholderFields,
+                            `education.${educationIndex}.period`,
+                          ) ?? ""
+                        }`}
+                      >
+                        {item.period.trim()}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="resume-item-copy">
+                  {hasValue(item.degree) && (
+                    <h3
+                      dir="auto"
+                      className={`resume-education-degree ${
+                        placeholderClass(
+                          placeholderFields,
+                          `education.${educationIndex}.degree`,
+                        ) ?? ""
+                      }`}
+                    >
+                      {item.degree.trim()}
+                    </h3>
                   )}
-                >
-                  {item.degree.trim()}
-                </h3>
-              )}
-              {hasValue(item.school) && (
-                <b
-                  dir="auto"
-                  className={placeholderClass(
-                    placeholderFields,
-                    `education.${educationIndex}.school`,
+                  {hasValue(item.school) && (
+                    <b
+                      dir="auto"
+                      className={`resume-education-school ${
+                        placeholderClass(
+                          placeholderFields,
+                          `education.${educationIndex}.school`,
+                        ) ?? ""
+                      }`}
+                    >
+                      {item.school.trim()}
+                    </b>
                   )}
-                >
-                  {item.school.trim()}
-                </b>
-              )}
-            </div>
-            {hasValue(item.period) && (
-              <span
-                className={`resume-period ${
-                  placeholderClass(
-                    placeholderFields,
-                    `education.${educationIndex}.period`,
-                  ) ?? ""
-                }`}
-                dir="auto"
-              >
-                {item.period.trim()}
-              </span>
+                </div>
+                {hasValue(item.period) && (
+                  <span
+                    className={`resume-period resume-education-period ${
+                      placeholderClass(
+                        placeholderFields,
+                        `education.${educationIndex}.period`,
+                      ) ?? ""
+                    }`}
+                    dir="auto"
+                  >
+                    {item.period.trim()}
+                  </span>
+                )}
+              </>
             )}
           </article>
         )
@@ -823,7 +918,7 @@ function SkillsSection({
 
   variant = "tags",
 }: {
-  skills: string[]
+  skills: SkillCategory[]
 
   labels: ResumeLabels
 
@@ -831,25 +926,74 @@ function SkillsSection({
 
   placeholderFields: ReadonlySet<string>
 
-  variant?: "tags" | "plain" | "technical"
+  variant?: "tags" | "plain" | "technical" | "category-key-value"
 }) {
-  const entries = skills.map((skill) => skill.trim()).filter(Boolean)
+  const entries = skills
+    .map((category, index) => ({
+      ...category,
+      index,
+      items: category.skills
+        .split(/[,\n،]/)
+        .map((skill) => skill.trim())
+        .filter(Boolean),
+    }))
+    .filter((category) => category.category.trim() || category.items.length > 0)
 
   if (entries.length === 0) return null
 
   return (
     <ResumeSection title={labels.skills} accent={accent}>
-      <ul className={`resume-skills resume-skills-${variant}`}>
-        {entries.map((skill, index) => (
-          <li
-            key={`${skill}-${index}`}
-            dir="auto"
-            className={placeholderClass(placeholderFields, `skills.${index}`)}
-          >
-            {skill}
-          </li>
-        ))}
-      </ul>
+      {variant === "category-key-value" ? (
+        <div className="resume-skills-categorized">
+          {entries.map((category) => (
+            <div
+              className={`resume-skill-category-row${
+                category.category.trim() ? "" : " no-category"
+              }`}
+              key={category.id}
+            >
+              {category.category.trim() && (
+                <strong
+                  dir="auto"
+                  className={placeholderClass(
+                    placeholderFields,
+                    `skills.${category.index}.category`,
+                  )}
+                >
+                  {category.category}
+                </strong>
+              )}
+              <span
+                dir="auto"
+                className={placeholderClass(
+                  placeholderFields,
+                  `skills.${category.index}.skills`,
+                )}
+              >
+                {category.items.join(", ")}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ul className={`resume-skills resume-skills-${variant}`}>
+          {entries.map((category) => (
+            <li
+              key={category.id}
+              dir="auto"
+              className={placeholderClass(
+                placeholderFields,
+                `skills.${category.index}.skills`,
+              )}
+            >
+              {category.category.trim() && (
+                <strong>{category.category}: </strong>
+              )}
+              {category.items.join(", ")}
+            </li>
+          ))}
+        </ul>
+      )}
     </ResumeSection>
   )
 }
@@ -1033,7 +1177,7 @@ function PublicationsSection({
               {url && (
                 <p className="resume-project-url" dir="ltr">
                   <a href={url} target="_blank" rel="noopener noreferrer">
-                    {item.url.trim()}
+                    {labels.viewPublication}
                   </a>
                 </p>
               )}
@@ -1219,7 +1363,9 @@ export function OrderedResumeSections({
   ]
 
   const skillsVariant =
-    templateId === "developer"
+    templateId === "ats"
+      ? "category-key-value"
+      : templateId === "developer"
       ? "technical"
       : templateId === "creative" ||
           templateId === "student" ||
@@ -1270,6 +1416,7 @@ export function OrderedResumeSections({
                 labels={labels}
                 accent={accent}
                 placeholderFields={props.placeholderFields}
+                compactAts={templateId === "ats"}
               />
             )
 
