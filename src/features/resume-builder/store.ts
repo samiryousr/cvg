@@ -29,6 +29,12 @@ import {
 } from "@/features/resume-builder/model"
 
 import { normalizeTemplateId } from "@/features/resume-builder/template-registry"
+import { useAuthStore } from "@/store/useAuthStore"
+import {
+  fetchUserResumes,
+  saveResume,
+  type SavedResume,
+} from "@/services/resumeService"
 import {
   MAX_SUMMARY_LENGTH,
   PERSONAL_FIELD_LIMITS,
@@ -280,16 +286,56 @@ type ResumeActions = {
 
   setDocumentLanguage: (language: ResumeDocumentLanguage) => void
 
+  isSaving: boolean
+
+  cloudResumeId: string | undefined
+
+  cloudResumeOwnerId: string | undefined
+
+  saveCurrentResume: () => Promise<SavedResume>
+
+  loadUserResume: () => Promise<SavedResume | null>
+
+  openSavedResume: (resume: SavedResume) => void
+
   resetResume: () => void
 }
 
 export type ResumeStore = ResumeData & {
   hasHydrated: boolean
+  isSaving: boolean
+  cloudResumeId: string | undefined
+  cloudResumeOwnerId: string | undefined
 } & ResumeActions
 
 const createId = () => globalThis.crypto.randomUUID()
 
 const sectionIds = new Set<string>(defaultResumeSectionOrder)
+let cloudLoadRevision = 0
+
+function getResumeData(state: ResumeStore): ResumeData {
+  return {
+    personal: state.personal,
+    summary: state.summary,
+    experiences: state.experiences,
+    education: state.education,
+    projects: state.projects,
+    certifications: state.certifications,
+    skills: state.skills,
+    languages: state.languages,
+    awards: state.awards,
+    volunteerExperiences: state.volunteerExperiences,
+    publications: state.publications,
+    references: state.references,
+    customSections: state.customSections,
+    sectionLayout: state.sectionLayout,
+    templateId: state.templateId,
+    documentLanguage: state.documentLanguage,
+    primaryColor: state.primaryColor,
+    colorMode: state.colorMode,
+    editorLanguage: state.editorLanguage,
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -886,10 +932,16 @@ function stripPreviewResume(resume: ResumeData): ResumeData {
 
 export const useResumeStore = create<ResumeStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialResume,
 
       hasHydrated: false,
+
+      isSaving: false,
+
+      cloudResumeId: undefined,
+
+      cloudResumeOwnerId: undefined,
 
       updatePersonal: (key, value) =>
         set((state) => {
@@ -1725,9 +1777,86 @@ export const useResumeStore = create<ResumeStore>()(
 
       setDocumentLanguage: (documentLanguage) => set({ documentLanguage }),
 
+      saveCurrentResume: async () => {
+        const user = useAuthStore.getState().user
+        if (!user) throw new Error("Sign in before saving your resume.")
+        if (get().isSaving) throw new Error("A resume save is already in progress.")
+
+        set({ isSaving: true })
+        try {
+          const currentState = get()
+          const savedResume = await saveResume(
+            user.id,
+            getResumeData(currentState),
+            currentState.cloudResumeId,
+          )
+
+          if (useAuthStore.getState().user?.id === user.id) {
+            set({
+              cloudResumeId: savedResume.id,
+              cloudResumeOwnerId: user.id,
+            })
+          }
+          return savedResume
+        } finally {
+          set({ isSaving: false })
+        }
+      },
+
+      loadUserResume: async () => {
+        const user = useAuthStore.getState().user
+        const revision = ++cloudLoadRevision
+        if (!user) {
+          set({
+            cloudResumeId: undefined,
+            cloudResumeOwnerId: undefined,
+          })
+          return null
+        }
+        if (get().cloudResumeOwnerId === user.id) return null
+        set({
+          cloudResumeId: undefined,
+          cloudResumeOwnerId: undefined,
+        })
+
+        const resumes = await fetchUserResumes(user.id)
+        const currentUser = useAuthStore.getState().user
+        if (
+          revision !== cloudLoadRevision ||
+          currentUser?.id !== user.id
+        ) {
+          return null
+        }
+
+        const latestResume = resumes[0]
+        if (!latestResume) {
+          set({
+            cloudResumeId: undefined,
+            cloudResumeOwnerId: user.id,
+          })
+          return null
+        }
+
+        set({
+          ...normalizeResumeData(latestResume.resume_data, emptyResume),
+          cloudResumeId: latestResume.id,
+          cloudResumeOwnerId: user.id,
+        })
+        return latestResume
+      },
+
+      openSavedResume: (resume) =>
+        set({
+          ...normalizeResumeData(resume.resume_data, emptyResume),
+          cloudResumeId: resume.id,
+          cloudResumeOwnerId: resume.user_id,
+        }),
+
       resetResume: () =>
         set({
           ...emptyResume,
+          cloudResumeId: undefined,
+          cloudResumeOwnerId: useAuthStore.getState().user?.id,
           personal: { ...emptyResume.personal },
           sectionLayout: {
             order: [...defaultResumeSectionOrder],

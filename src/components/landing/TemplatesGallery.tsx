@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { MiniResume } from "@/components/landing/MiniResume"
-import { ThemeToggle } from "@/components/ThemeToggle"
+import { Navbar } from "@/components/Navbar"
 import { templateRegistryEntries } from "@/features/resume-builder/template-registry"
 
 export function TemplatesGallery() {
@@ -10,18 +10,7 @@ export function TemplatesGallery() {
 
   return (
     <div className="landing templates-page" dir="rtl">
-      <header className="templates-page-header">
-        <a className="brand" href="/" aria-label="سيرتي الرئيسية">
-          <span>س</span>
-          <strong>سيرتي</strong>
-        </a>
-        <div className="templates-page-actions">
-          <ThemeToggle />
-          <button type="button" onClick={() => router.push("/")}>
-            العودة للرئيسية
-          </button>
-        </div>
-      </header>
+      <Navbar compact />
 
       <main className="all-templates-content">
         <div className="section-heading">

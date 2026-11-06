@@ -1,6 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
+import { useAuthStore } from "@/store/useAuthStore"
 import {
   useResumeSaveStatus,
   useResumeStore,
@@ -18,6 +20,7 @@ import {
 } from "@/components/resume-builder/ResumeEditorFields"
 import { LiveResumePreview } from "@/components/resume-builder/LiveResumePreview"
 import { ResumeSectionManager } from "@/components/resume-builder/ResumeSectionManager"
+import { SaveResumeButton } from "@/components/resume-builder/SaveResumeButton"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 export function ResumeEditor({ onBack }: { onBack: () => void }) {
@@ -72,6 +75,8 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const setPrimaryColor = useResumeStore((state) => state.setPrimaryColor)
 
   const saveStatus = useResumeSaveStatus((state) => state.status)
+
+  const user = useAuthStore((state) => state.user)
 
   const hasUserResumeContent = useResumeStore(hasResumeContent)
 
@@ -408,6 +413,13 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
         </div>
         <div className="header-actions">
           <ThemeToggle />
+          {user ? (
+            <SaveResumeButton isArabic={isArabic} />
+          ) : (
+            <Link className="cloud-save-button" href="/auth">
+              {isArabic ? "دخول للحفظ السحابي" : "Sign in to save"}
+            </Link>
+          )}
           <button
             className="download-button"
             onClick={printResume}
@@ -430,7 +442,6 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           {exportError}
         </p>
       )}
-
       <div className="editor-layout">
         <div
           className="mobile-editor-tabs"

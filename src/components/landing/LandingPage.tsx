@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type UIEvent } from "react"
 import { useRouter } from "next/navigation"
 import { MiniResume } from "@/components/landing/MiniResume"
-import { ThemeToggle } from "@/components/ThemeToggle"
+import { Navbar } from "@/components/Navbar"
+import { StartButton } from "@/components/StartButton"
 import type { TemplateId } from "@/features/resume-builder/model"
 import {
   templateRegistry,
@@ -12,7 +13,6 @@ import {
 
 export function LandingPage() {
   const router = useRouter()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [headerFloating, setHeaderFloating] = useState(false)
   const templateCount = templateRegistryEntries.length
   const [activeSlideIndex, setActiveSlideIndex] = useState(templateCount * 2)
@@ -119,57 +119,7 @@ export function LandingPage() {
   return (
     <div className="landing" id="top" dir="rtl">
       <div className="site-header-slot">
-        <header
-          className={`site-header${headerFloating ? " is-scrolled" : ""}`}
-        >
-          <a className="brand" href="#" aria-label="سيرتي الرئيسية">
-            <span>س</span>
-            <strong>سيرتي</strong>
-          </a>
-          <nav>
-            <a href="#top">الرئيسية</a>
-            <a href="#templates">القوالب</a>
-            <a href="#features">المميزات</a>
-            <a href="#how">طريقة الاستخدام</a>
-          </nav>
-          <div className="site-header-actions">
-            <ThemeToggle />
-            <button
-              className="text-button"
-              onClick={() => openEditor("ats")}
-            >
-              أنشئ سيرتك
-              <span aria-hidden="true">←</span>
-            </button>
-          </div>
-          <button
-            className={`menu-button ${menuOpen ? "open" : ""}`}
-            aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <i />
-            <i />
-            <i />
-          </button>
-          <div className={`mobile-menu ${menuOpen ? "open" : ""}`}>
-            <a href="#top" onClick={() => setMenuOpen(false)}>
-              الرئيسية
-            </a>
-            <a href="#templates" onClick={() => setMenuOpen(false)}>
-              القوالب
-            </a>
-            <a href="#features" onClick={() => setMenuOpen(false)}>
-              المميزات
-            </a>
-            <a href="#how" onClick={() => setMenuOpen(false)}>
-              طريقة الاستخدام
-            </a>
-            <button onClick={() => openEditor("ats")}>
-              أنشئ سيرتك مجانًا
-            </button>
-          </div>
-        </header>
+        <Navbar floating={headerFloating} landing />
       </div>
 
       <main>
@@ -187,13 +137,10 @@ export function LandingPage() {
               <em>تحكي قصتك.</em>
             </h1>
             <p>قوالب احترافية، تعديل فوري، ونتيجة تليق بخبرتك — بدون تعقيد.</p>
-            <button
-              className="primary-button"
-              onClick={() => openEditor("ats")}
-            >
+            <StartButton className="primary-button">
               ابدأ مجانًا
               <span aria-hidden="true">←</span>
-            </button>
+            </StartButton>
             <small>لا تحتاج بطاقة ائتمانية · جاهزة خلال دقائق</small>
           </div>
           <div className="hero-resume-visual" aria-hidden="true">
@@ -411,13 +358,10 @@ export function LandingPage() {
           <span>خطوتك القادمة تبدأ هنا</span>
           <h2>سيرتك تستحق أن تُقرأ.</h2>
           <p>أنشئ سيرة ذاتية تعبّر عنك وتمنح خبراتك المساحة التي تستحقها.</p>
-          <button
-            className="primary-button light-button"
-            onClick={() => openEditor("ats")}
-          >
+          <StartButton className="primary-button light-button">
             ابدأ مجانًا
             <span aria-hidden="true">←</span>
-          </button>
+          </StartButton>
         </section>
       </main>
 

@@ -12,6 +12,7 @@
     "format": "oxfmt"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "html2pdf.js": "^0.14.0",
     "next": "^16.0.0",
     "react": "^19.0.0",
