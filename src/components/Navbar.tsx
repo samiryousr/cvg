@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { NavbarAuthModal } from "@/components/NavbarAuthModal"
@@ -27,6 +27,20 @@ export function Navbar({
   const [menuOpen, setMenuOpen] = useState(false)
 
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      setMenuOpen(false)
+      menuButtonRef.current?.focus()
+    }
+
+    document.addEventListener("keydown", closeOnEscape)
+    return () => document.removeEventListener("keydown", closeOnEscape)
+  }, [menuOpen])
 
   const user = useAuthStore((state) => state.user)
 
@@ -138,15 +152,22 @@ export function Navbar({
         <button
           className={`menu-button ${menuOpen ? "open" : ""}`}
           type="button"
+          ref={menuButtonRef}
           aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
           aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
           onClick={() => setMenuOpen((open) => !open)}
         >
           <i />
           <i />
           <i />
         </button>
-        <div className={`mobile-menu ${menuOpen ? "open" : ""}`}>
+        <div
+          id="mobile-menu"
+          className={`mobile-menu ${menuOpen ? "open" : ""}`}
+          aria-hidden={!menuOpen}
+          inert={!menuOpen}
+        >
           {landing ? (
             <>
               <a href="#top" onClick={() => setMenuOpen(false)}>

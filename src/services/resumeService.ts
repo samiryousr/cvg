@@ -74,9 +74,5 @@ export async function fetchUserResumes(
 
   if (error) throw error
 
-  const resumes = data ?? []
-  console.info("Fetched saved resumes from Supabase.", {
-    count: resumes.length,
-  })
-  return resumes
+  return data ?? []
 }

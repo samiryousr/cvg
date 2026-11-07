@@ -41,6 +41,8 @@ describe("resume store cloud actions", () => {
       ...emptyResume,
       personal: { ...emptyResume.personal },
       isSaving: false,
+      personalInfoErrors: {},
+      cloudResumeLoadStatus: "idle",
       cloudResumeId: undefined,
       cloudResumeOwnerId: undefined,
       hasHydrated: true,
@@ -54,6 +56,9 @@ describe("resume store cloud actions", () => {
   })
 
   it("saves the current resume for the signed-in user and tracks its cloud ID", async () => {
+    useResumeStore.getState().updatePersonal("name", "Amina Example")
+    useResumeStore.getState().updatePersonal("email", "amina@example.com")
+    useResumeStore.getState().updatePersonal("phone", "+1 212 555 0142")
     const savedResume = {
       id: "cloud-resume-1",
       user_id: "user-1",
@@ -67,7 +72,13 @@ describe("resume store cloud actions", () => {
 
     expect(mocks.saveResume).toHaveBeenCalledWith(
       "user-1",
-      expect.objectContaining({ personal: emptyResume.personal }),
+      expect.objectContaining({
+        personal: expect.objectContaining({
+          name: "Amina Example",
+          email: "amina@example.com",
+          phone: "+1 212 555 0142",
+        }),
+      }),
       undefined,
     )
     expect(useResumeStore.getState().cloudResumeId).toBe("cloud-resume-1")
@@ -132,11 +143,38 @@ describe("resume store cloud actions", () => {
   })
 
   it("does not silently mark a failed save as successful", async () => {
+    useResumeStore.getState().updatePersonal("name", "Amina Example")
+    useResumeStore.getState().updatePersonal("email", "amina@example.com")
+    useResumeStore.getState().updatePersonal("phone", "+1 212 555 0142")
     mocks.saveResume.mockRejectedValue(new Error("Save failed"))
 
     await expect(useResumeStore.getState().saveCurrentResume()).rejects.toThrow(
       "Save failed",
     )
     expect(useResumeStore.getState().isSaving).toBe(false)
+  })
+
+  it("blocks cloud saves until required personal information is valid", async () => {
+    await expect(useResumeStore.getState().saveCurrentResume()).rejects.toThrow(
+      "Please correct the highlighted resume fields.",
+    )
+
+    expect(mocks.saveResume).not.toHaveBeenCalled()
+    expect(useResumeStore.getState().personalInfoErrors).toEqual({
+      name: "required",
+      email: "required",
+      phone: "required",
+    })
+    expect(useResumeStore.getState().isSaving).toBe(false)
+  })
+
+  it("records cloud-load failures for the editor to display", async () => {
+    mocks.fetchUserResumes.mockRejectedValue(new Error("Fetch failed"))
+
+    await expect(useResumeStore.getState().loadUserResume()).rejects.toThrow(
+      "Fetch failed",
+    )
+
+    expect(useResumeStore.getState().cloudResumeLoadStatus).toBe("error")
   })
 })

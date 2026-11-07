@@ -78,6 +78,12 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
 
   const user = useAuthStore((state) => state.user)
 
+  const cloudResumeLoadStatus = useResumeStore(
+    (state) => state.cloudResumeLoadStatus,
+  )
+
+  const loadUserResume = useResumeStore((state) => state.loadUserResume)
+
   const hasUserResumeContent = useResumeStore(hasResumeContent)
 
   const copy = {
@@ -89,6 +95,13 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     saveError: isArabic
       ? "تعذر حفظ التغييرات على هذا الجهاز"
       : "Could not save changes on this device",
+    loadingCloudResume: isArabic
+      ? "جارٍ تحميل السيرة المحفوظة من حسابك..."
+      : "Loading your saved resume from your account...",
+    cloudResumeLoadError: isArabic
+      ? "تعذر تحميل السيرة من حسابك. يمكنك المحاولة مرة أخرى."
+      : "Could not load your resume from your account. Please try again.",
+    retry: isArabic ? "إعادة المحاولة" : "Retry",
     newResume: isArabic ? "سيرة ذاتية جديدة" : "Untitled resume",
     home: isArabic ? "العودة للرئيسية" : "Back to home",
     downloadPdf: isArabic ? "حفظ PDF" : "Save as PDF",
@@ -441,6 +454,54 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
         <p className="pdf-export-error" role="alert">
           {exportError}
         </p>
+      )}
+      {user && cloudResumeLoadStatus === "loading" && (
+        <p
+          className="cloud-save-feedback"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <svg
+            className="me-2 inline size-4 animate-spin align-[-3px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="9"
+              stroke="currentColor"
+              strokeWidth="3"
+            />
+            <path
+              className="opacity-75"
+              d="M21 12a9 9 0 0 0-9-9"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
+          {copy.loadingCloudResume}
+        </p>
+      )}
+      {user && cloudResumeLoadStatus === "error" && (
+        <div className="pdf-export-error" role="alert">
+          <span>{copy.cloudResumeLoadError}</span>{" "}
+          <button
+            type="button"
+            className="font-bold underline underline-offset-4"
+            onClick={() =>
+              void loadUserResume().catch((error: unknown) => {
+                console.error("Could not retry loading the cloud resume.", error)
+              })
+            }
+          >
+            {copy.retry}
+          </button>
+        </div>
       )}
       <div className="editor-layout">
         <div

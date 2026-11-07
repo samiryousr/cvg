@@ -49,15 +49,35 @@ describe("resume input validation", () => {
     ])
   })
 
-  it("reports missing names and malformed optional email addresses", () => {
-    expect(validatePersonalInfo({ name: " ", email: "" })).toEqual({
+  it("requires a name, email, and phone number", () => {
+    expect(validatePersonalInfo({ name: " ", email: "", phone: "" })).toEqual({
       name: "required",
+      email: "required",
+      phone: "required",
     })
+  })
+
+  it("reports malformed email addresses and phone numbers", () => {
     expect(
-      validatePersonalInfo({ name: "Amina", email: "not-an-email" }),
-    ).toEqual({ email: "invalid" })
+      validatePersonalInfo({
+        name: "Amina",
+        email: "not-an-email",
+        phone: "123456",
+      }),
+    ).toEqual({ email: "invalid", phone: "invalid" })
     expect(
-      validatePersonalInfo({ name: "Amina", email: "amina@example.com" }),
+      validatePersonalInfo({
+        name: "Amina",
+        email: "amina@example.com",
+        phone: "1234567890123456",
+      }),
+    ).toEqual({ phone: "invalid" })
+    expect(
+      validatePersonalInfo({
+        name: "Amina",
+        email: "amina@example.com",
+        phone: "+1 (212) 555-0142",
+      }),
     ).toEqual({})
   })
 })

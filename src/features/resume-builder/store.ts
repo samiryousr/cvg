@@ -38,8 +38,10 @@ import {
 import {
   MAX_SUMMARY_LENGTH,
   PERSONAL_FIELD_LIMITS,
+  ResumeValidationError,
   sanitizeResumeText,
   sanitizeSkills,
+  validatePersonalInfo,
 } from "@/features/resume-builder/validation"
 
 type Direction = -1 | 1
@@ -288,6 +290,10 @@ type ResumeActions = {
 
   isSaving: boolean
 
+  personalInfoErrors: ReturnType<typeof validatePersonalInfo>
+
+  cloudResumeLoadStatus: "idle" | "loading" | "error"
+
   cloudResumeId: string | undefined
 
   cloudResumeOwnerId: string | undefined
@@ -304,6 +310,8 @@ type ResumeActions = {
 export type ResumeStore = ResumeData & {
   hasHydrated: boolean
   isSaving: boolean
+  personalInfoErrors: ReturnType<typeof validatePersonalInfo>
+  cloudResumeLoadStatus: "idle" | "loading" | "error"
   cloudResumeId: string | undefined
   cloudResumeOwnerId: string | undefined
 } & ResumeActions
@@ -939,6 +947,10 @@ export const useResumeStore = create<ResumeStore>()(
 
       isSaving: false,
 
+      personalInfoErrors: {},
+
+      cloudResumeLoadStatus: "idle",
+
       cloudResumeId: undefined,
 
       cloudResumeOwnerId: undefined,
@@ -955,7 +967,13 @@ export const useResumeStore = create<ResumeStore>()(
                 ? sanitizeResumeText(value, PERSONAL_FIELD_LIMITS[key])
                 : value
 
-          return { personal: { ...state.personal, [key]: safeValue } }
+          const personal = { ...state.personal, [key]: safeValue }
+          return {
+            personal,
+            ...(Object.keys(state.personalInfoErrors).length > 0
+              ? { personalInfoErrors: validatePersonalInfo(personal) }
+              : {}),
+          }
         }),
 
       updateSummary: (summary) =>
@@ -1782,6 +1800,13 @@ export const useResumeStore = create<ResumeStore>()(
         if (!user) throw new Error("Sign in before saving your resume.")
         if (get().isSaving) throw new Error("A resume save is already in progress.")
 
+        const validationErrors = validatePersonalInfo(get().personal)
+        if (Object.keys(validationErrors).length > 0) {
+          set({ personalInfoErrors: validationErrors })
+          throw new ResumeValidationError(validationErrors)
+        }
+
+        set({ personalInfoErrors: {} })
         set({ isSaving: true })
         try {
           const currentState = get()
@@ -1808,6 +1833,7 @@ export const useResumeStore = create<ResumeStore>()(
         const revision = ++cloudLoadRevision
         if (!user) {
           set({
+            cloudResumeLoadStatus: "idle",
             cloudResumeId: undefined,
             cloudResumeOwnerId: undefined,
           })
@@ -1815,22 +1841,38 @@ export const useResumeStore = create<ResumeStore>()(
         }
         if (get().cloudResumeOwnerId === user.id) return null
         set({
+          cloudResumeLoadStatus: "loading",
           cloudResumeId: undefined,
           cloudResumeOwnerId: undefined,
         })
 
-        const resumes = await fetchUserResumes(user.id)
+        let resumes: SavedResume[]
+        try {
+          resumes = await fetchUserResumes(user.id)
+        } catch (error) {
+          if (
+            revision === cloudLoadRevision &&
+            useAuthStore.getState().user?.id === user.id
+          ) {
+            set({ cloudResumeLoadStatus: "error" })
+          }
+          throw error
+        }
         const currentUser = useAuthStore.getState().user
         if (
           revision !== cloudLoadRevision ||
           currentUser?.id !== user.id
         ) {
+          if (revision === cloudLoadRevision) {
+            set({ cloudResumeLoadStatus: "idle" })
+          }
           return null
         }
 
         const latestResume = resumes[0]
         if (!latestResume) {
           set({
+            cloudResumeLoadStatus: "idle",
             cloudResumeId: undefined,
             cloudResumeOwnerId: user.id,
           })
@@ -1839,6 +1881,8 @@ export const useResumeStore = create<ResumeStore>()(
 
         set({
           ...normalizeResumeData(latestResume.resume_data, emptyResume),
+          personalInfoErrors: {},
+          cloudResumeLoadStatus: "idle",
           cloudResumeId: latestResume.id,
           cloudResumeOwnerId: user.id,
         })
@@ -1848,6 +1892,8 @@ export const useResumeStore = create<ResumeStore>()(
       openSavedResume: (resume) =>
         set({
           ...normalizeResumeData(resume.resume_data, emptyResume),
+          personalInfoErrors: {},
+          cloudResumeLoadStatus: "idle",
           cloudResumeId: resume.id,
           cloudResumeOwnerId: resume.user_id,
         }),
@@ -1855,6 +1901,8 @@ export const useResumeStore = create<ResumeStore>()(
       resetResume: () =>
         set({
           ...emptyResume,
+          personalInfoErrors: {},
+          cloudResumeLoadStatus: "idle",
           cloudResumeId: undefined,
           cloudResumeOwnerId: useAuthStore.getState().user?.id,
           personal: { ...emptyResume.personal },

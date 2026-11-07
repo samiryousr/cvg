@@ -80,17 +80,10 @@ export function ResumesDashboard() {
         const items = await fetchUserResumes(userId)
         if (!active) return
         setResumes(items)
-        console.debug("Resume dashboard received saved resumes.", {
-          count: items.length,
-        })
       } catch (cause: unknown) {
         if (!active) return
         console.error("Could not fetch the user's saved resumes.", cause)
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "تعذر تحميل السير الذاتية. حاول مرة أخرى.",
-        )
+        setError("تعذر تحميل سيرك الذاتية الآن. تحقق من اتصالك وحاول مرة أخرى.")
       } finally {
         if (active) setIsLoading(false)
       }
@@ -113,11 +106,7 @@ export function ResumesDashboard() {
       setResumes(items)
     } catch (cause: unknown) {
       console.error("Could not reload the user's saved resumes.", cause)
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "تعذر تحميل السير الذاتية. حاول مرة أخرى.",
-      )
+      setError("تعذر تحميل سيرك الذاتية الآن. تحقق من اتصالك وحاول مرة أخرى.")
     } finally {
       setIsLoading(false)
     }
@@ -135,13 +124,10 @@ export function ResumesDashboard() {
     )
   }
 
-  const latestResume = resumes[0]
-  const latestSummary = latestResume ? getResumeSummary(latestResume) : null
-
   return (
-    <main className="min-h-screen bg-[#f7f6f1] text-[#18302c] transition-colors dark:bg-[#111816] dark:text-[#e7eeeb]">
+    <main className="dashboard-shell min-h-screen bg-[#f7f6f1] text-[#18302c] transition-colors dark:bg-[#111816] dark:text-[#e7eeeb]">
       <Navbar compact />
-      <section className="mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8 sm:pt-16">
+      <section className="dashboard-content mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8 sm:pt-16">
         <div className="mb-9 flex flex-wrap items-end justify-between gap-5">
           <div>
             <p className="mb-2 text-sm font-bold text-[#648078] dark:text-[#9cc4b0]">
@@ -155,7 +141,7 @@ export function ResumesDashboard() {
             </p>
           </div>
           {user?.email && (
-            <p className="rounded-full border border-[#dce4df] bg-white/70 px-4 py-2 text-xs text-[#687670] dark:border-[#34443f] dark:bg-[#19221f] dark:text-[#aab8b2]" dir="ltr">
+            <p className="max-w-full min-w-0 [overflow-wrap:anywhere] rounded-full border border-[#dce4df] bg-white/70 px-4 py-2 text-xs text-[#687670] dark:border-[#34443f] dark:bg-[#19221f] dark:text-[#aab8b2]" dir="ltr">
               {user.email}
             </p>
           )}
@@ -204,78 +190,104 @@ export function ResumesDashboard() {
 
             {isLoading ? (
               <div
-                className="grid max-w-[560px] grid-cols-2 gap-5 sm:gap-7"
+                className="dashboard-resume-grid grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3 sm:gap-7"
                 aria-label="جارٍ تحميل السير الذاتية"
                 role="status"
               >
                 <span className="sr-only">جارٍ تحميل السير الذاتية</span>
-                {[0, 1].map((item) => (
+                {[0, 1, 2].map((item) => (
                   <div
-                    className="aspect-[210/297] animate-pulse rounded-xl border border-[#e1e6e2] bg-[#edf1ee] dark:border-[#34443f] dark:bg-[#263630]"
+                    className="aspect-[210/297] animate-pulse rounded-2xl border border-[#e1e6e2] bg-[#edf1ee] dark:border-[#34443f] dark:bg-[#263630]"
                     key={item}
                   />
                 ))}
               </div>
             ) : (
-              <div className="grid max-w-[560px] grid-cols-2 items-start gap-5 sm:gap-7">
-                {latestResume && latestSummary && (
-                  <article className="overflow-hidden rounded-xl border border-[#e1e6e2] bg-white shadow-[0_12px_36px_rgba(27,62,54,0.07)] dark:border-[#34443f] dark:bg-[#19221f]">
-                    <div className="aspect-[210/297] overflow-hidden bg-white p-[7%] text-black dark:bg-white">
-                      <div className="h-full overflow-hidden border-t-[3px] border-[#173f38] pt-[5%] font-sans">
-                        <h2 className="truncate text-[clamp(10px,2.4vw,18px)] font-extrabold">
-                          {latestSummary.name}
-                        </h2>
-                        <p className="mt-1 truncate text-[clamp(5px,1vw,8px)] text-gray-600">
-                          {latestSummary.details.join(" • ")}
-                        </p>
-                        <div className="mt-[8%] space-y-[6%]">
-                          {latestSummary.sections.map((section, index) => (
-                            <div key={`${index}-${section.slice(0, 24)}`}>
-                              {index > 0 && (
-                                <div className="mb-[2%] border-b border-gray-300 pb-[1%] text-[clamp(5px,1vw,8px)] font-bold uppercase">
-                                  {index === 1 ? "Experience" : "Resume"}
-                                </div>
-                              )}
-                              <p className="line-clamp-3 text-[clamp(5px,1vw,8px)] leading-[1.55] text-gray-700">
-                                {section}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-3 sm:p-4">
-                      <h3 className="truncate text-sm font-bold">
-                        {latestSummary.name}
-                      </h3>
-                      <p className="mt-1 text-[11px] text-[#77817e] dark:text-[#aab8b2]">
-                        آخر تحديث{" "}
-                        {new Intl.DateTimeFormat("ar", {
-                          dateStyle: "medium",
-                        }).format(new Date(latestResume.updated_at))}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => continueResume(latestResume)}
-                        className="mt-3 w-full rounded-lg bg-[#173f38] px-3 py-2.5 text-xs font-bold text-white transition hover:bg-[#0f302a]"
-                      >
-                        تعديل / متابعة
-                      </button>
-                    </div>
-                  </article>
-                )}
+              <div className="dashboard-resume-grid grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3 sm:gap-7">
+                {resumes.map((resume) => {
+                  const summary = getResumeSummary(resume)
+                  const updatedAt = new Intl.DateTimeFormat("ar", {
+                    dateStyle: "medium",
+                  }).format(new Date(resume.updated_at))
 
-                <button
-                  type="button"
-                  onClick={createResume}
-                  className="group flex aspect-[210/297] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[#bdcec5] bg-white/45 text-[#315d53] transition hover:border-[#668f7b] hover:bg-white dark:border-[#446958] dark:bg-[#19221f]/50 dark:text-[#bde2ca] dark:hover:bg-[#19221f]"
-                  aria-label="إنشاء سيرة ذاتية جديدة"
-                >
-                  <span className="grid size-12 place-items-center rounded-full border border-current text-3xl font-light transition group-hover:scale-105">
-                    +
-                  </span>
-                  <span className="text-sm font-bold">إنشاء سيرة جديدة</span>
-                </button>
+                  return (
+                    <article
+                      className="dashboard-resume-card group overflow-hidden rounded-2xl border border-[#e1e6e2] bg-white shadow-[0_12px_36px_rgba(27,62,54,0.07)] transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(27,62,54,0.14)] dark:border-[#34443f] dark:bg-[#19221f]"
+                      key={resume.id}
+                    >
+                      <div className="dashboard-resume-art relative aspect-[210/297] overflow-hidden bg-white p-[7%] text-black">
+                        <div className="h-full overflow-hidden border-t-[3px] border-[#173f38] pt-[5%] font-sans">
+                          <h2 className="truncate text-[clamp(10px,2.4vw,18px)] font-extrabold">
+                            {summary.name}
+                          </h2>
+                          <p className="mt-1 truncate text-[clamp(5px,1vw,8px)] text-gray-600">
+                            {summary.details.join(" • ")}
+                          </p>
+                          <div className="mt-[8%] space-y-[6%]">
+                            {summary.sections.map((section, index) => (
+                              <div key={`${index}-${section.slice(0, 24)}`}>
+                                {index > 0 && (
+                                  <div className="mb-[2%] border-b border-gray-300 pb-[1%] text-[clamp(5px,1vw,8px)] font-bold uppercase">
+                                    {index === 1 ? "Experience" : "Resume"}
+                                  </div>
+                                )}
+                                <p className="line-clamp-3 [overflow-wrap:anywhere] text-[clamp(5px,1vw,8px)] leading-[1.55] text-gray-700">
+                                  {section}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="dashboard-resume-overlay"
+                          onClick={() => continueResume(resume)}
+                          aria-label={`تعديل ${summary.name}`}
+                        >
+                          تعديل السيرة
+                          <span aria-hidden="true">←</span>
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        <h2 className="truncate text-sm font-bold">
+                          {summary.name}
+                        </h2>
+                        <p className="dashboard-resume-date mt-2 inline-flex items-center gap-2 text-[11px] text-[#77817e] dark:text-[#aab8b2]">
+                          <span aria-hidden="true" />
+                          <span className="dashboard-resume-badge">آخر تعديل</span>
+                          {updatedAt}
+                        </p>
+                      </div>
+                    </article>
+                  )
+                })}
+
+                {!error && (
+                  <button
+                    type="button"
+                    onClick={createResume}
+                    className={`dashboard-create-card group flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#bdcec5] bg-white/65 p-7 text-center text-[#315d53] transition-all duration-200 ease-in-out hover:-translate-y-1 hover:border-[#668f7b] hover:bg-white dark:border-[#446958] dark:bg-[#19221f]/70 dark:text-[#bde2ca] dark:hover:bg-[#19221f] ${
+                      resumes.length === 0 ? "sm:col-span-2 lg:col-span-3" : ""
+                    }`}
+                  >
+                    <span className="dashboard-create-icon grid size-14 place-items-center rounded-2xl border border-current text-3xl font-light transition group-hover:scale-105">
+                      +
+                    </span>
+                    <span className="text-base font-bold">
+                      {resumes.length === 0
+                        ? "لا توجد سير ذاتية محفوظة بعد"
+                        : "إنشاء سيرة جديدة"}
+                    </span>
+                    <span className="max-w-sm text-sm leading-7 text-[#687670] dark:text-[#aab8b2]">
+                      {resumes.length === 0
+                        ? "ابدأ سيرتك الأولى، أضف خبراتك ومهاراتك، ثم احفظها في حسابك لتعود إليها في أي وقت."
+                        : "ابدأ بتصميم جديد واحتفظ بكل سيرك الذاتية في مكان واحد."}
+                    </span>
+                    <span className="rounded-xl bg-[#173f38] px-5 py-3 text-sm font-bold text-white transition group-hover:bg-[#0f302a]">
+                      إنشاء سيرة جديدة
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </>

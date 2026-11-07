@@ -15,7 +15,6 @@ import { useResumeStore } from "@/features/resume-builder/store"
 import {
   MAX_SUMMARY_LENGTH,
   PERSONAL_FIELD_LIMITS,
-  validatePersonalInfo,
 } from "@/features/resume-builder/validation"
 
 function useEditorCopy() {
@@ -68,7 +67,10 @@ function useEditorCopy() {
         urlPlaceholder: "https://example.com",
         optional: "اختياري",
         required: "مطلوب",
+        requiredEmail: "البريد الإلكتروني مطلوب.",
         invalidEmail: "أدخل بريدًا إلكترونيًا صالحًا.",
+        requiredPhone: "رقم الهاتف مطلوب.",
+        invalidPhone: "أدخل رقم هاتف صالحًا يتضمن من 7 إلى 15 رقمًا.",
         invalidImage: "اختار ملف صورة صالح.",
         imageTooLarge: "حجم الصورة لازم يكون أقل من 8 ميجابايت.",
         processingImage: "جارٍ تجهيز الصورة...",
@@ -126,7 +128,10 @@ function useEditorCopy() {
         urlPlaceholder: "https://example.com",
         optional: "Optional",
         required: "Required",
+        requiredEmail: "Email address is required.",
         invalidEmail: "Enter a valid email address.",
+        requiredPhone: "Phone number is required.",
+        invalidPhone: "Enter a valid phone number with 7 to 15 digits.",
         invalidImage: "Choose a valid image file.",
         imageTooLarge: "The image must be smaller than 8 MB.",
         processingImage: "Preparing your photo...",
@@ -161,10 +166,25 @@ export const TextField = memo(function TextField({
 
   const updatePersonal = useResumeStore((state) => state.updatePersonal)
   const isArabic = useResumeStore((state) => state.editorLanguage === "ar")
-  const emailError =
-    field === "email"
-      ? validatePersonalInfo({ name: "valid", email: value }).email
+  const personalInfoErrors = useResumeStore(
+    (state) => state.personalInfoErrors,
+  )
+  const fieldError =
+    field === "name" || field === "email" || field === "phone"
+      ? personalInfoErrors[field]
       : undefined
+  const errorMessage =
+    fieldError === "required"
+      ? field === "name"
+        ? copy.required
+        : field === "email"
+          ? copy.requiredEmail
+          : copy.requiredPhone
+      : fieldError === "invalid"
+        ? field === "email"
+          ? copy.invalidEmail
+          : copy.invalidPhone
+        : undefined
   const inputType =
     field === "email"
       ? "email"
@@ -192,7 +212,9 @@ export const TextField = memo(function TextField({
     >
       <span>
         {isArabic ? labelAr : labelEn}
-        {field === "name" ? ` · ${copy.required}` : ` · ${copy.optional}`}
+        {field === "name" || field === "email" || field === "phone"
+          ? ` · ${copy.required}`
+          : ` · ${copy.optional}`}
       </span>
       <input
         type={inputType}
@@ -208,15 +230,20 @@ export const TextField = memo(function TextField({
               : "ltr"
         }
         placeholder={placeholders[field]}
-        required={field === "name"}
+        required={field === "name" || field === "email" || field === "phone"}
         maxLength={PERSONAL_FIELD_LIMITS[field]}
-        aria-invalid={Boolean(emailError)}
+        aria-invalid={Boolean(fieldError)}
+        aria-describedby={errorMessage ? `personal-${field}-error` : undefined}
         value={value}
         onChange={(event) => updatePersonal(field, event.target.value)}
       />
-      {emailError && (
-        <small className="field-message field-error" role="alert">
-          {copy.invalidEmail}
+      {errorMessage && (
+        <small
+          className="field-message field-error"
+          id={`personal-${field}-error`}
+          role="alert"
+        >
+          {errorMessage}
         </small>
       )}
     </label>

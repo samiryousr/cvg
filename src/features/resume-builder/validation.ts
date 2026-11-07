@@ -18,8 +18,15 @@ export const PERSONAL_FIELD_LIMITS = {
 } satisfies Record<keyof PersonalInfo, number>
 
 export type PersonalInfoValidationErrors = Partial<
-  Record<"name" | "email", "required" | "invalid">
+  Record<"name" | "email" | "phone", "required" | "invalid">
 >
+
+export class ResumeValidationError extends Error {
+  constructor(readonly errors: PersonalInfoValidationErrors) {
+    super("Please correct the highlighted resume fields.")
+    this.name = "ResumeValidationError"
+  }
+}
 
 export function sanitizeResumeText(
   value: string,
@@ -41,15 +48,31 @@ export function sanitizeSkills(skills: SkillCategory[]): SkillCategory[] {
 }
 
 export function validatePersonalInfo(
-  personal: Pick<PersonalInfo, "name" | "email">,
+  personal: Pick<PersonalInfo, "name" | "email" | "phone">,
 ): PersonalInfoValidationErrors {
   const errors: PersonalInfoValidationErrors = {}
 
   if (!personal.name.trim()) errors.name = "required"
 
   const email = personal.email.trim()
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email) {
+    errors.email = "required"
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = "invalid"
+  }
+
+  const phone = personal.phone.trim()
+  if (!phone) {
+    errors.phone = "required"
+  } else {
+    const digits = phone.replace(/\D/g, "")
+    if (
+      !/^\+?[\d\s().-]+$/.test(phone) ||
+      digits.length < 7 ||
+      digits.length > 15
+    ) {
+      errors.phone = "invalid"
+    }
   }
 
   return errors
