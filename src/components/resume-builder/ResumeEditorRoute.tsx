@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation"
 import { LoadingScreen } from "@/components/LoadingScreen"
 import { ResumeEditor } from "@/components/resume-builder/ResumeEditor"
 import type { TemplateId } from "@/features/resume-builder/model"
-import { useResumeStore } from "@/features/resume-builder/store"
+import {
+  hydrateResumeStore,
+  useResumeStore,
+} from "@/features/resume-builder/store"
 
 export function ResumeEditorRoute({
   templateId,
@@ -23,7 +26,7 @@ export function ResumeEditorRoute({
     if (hasHydrated || startedRehydration.current) return
 
     startedRehydration.current = true
-    void useResumeStore.persist.rehydrate()
+    void hydrateResumeStore()
   }, [hasHydrated])
 
   useEffect(() => {

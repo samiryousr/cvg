@@ -6,8 +6,15 @@ import { useEffect, useRef, useState } from "react"
 
 import { Navbar } from "@/components/Navbar"
 import type { SavedResume } from "@/services/resumeService"
-import { fetchUserResumes } from "@/services/resumeService"
-import { useResumeStore } from "@/features/resume-builder/store"
+import {
+  deleteResume,
+  fetchUserResumes,
+  renameResume,
+} from "@/services/resumeService"
+import {
+  hydrateResumeStore,
+  useResumeStore,
+} from "@/features/resume-builder/store"
 import { useAuthStore } from "@/store/useAuthStore"
 
 function getResumeSummary(resume: SavedResume) {
@@ -28,7 +35,7 @@ function getResumeSummary(resume: SavedResume) {
   ].filter(Boolean)
 
   return {
-    name: personal.name || resume.title || "سيرتي الذاتية",
+    name: resume.title || personal.name || "سيرتي الذاتية",
     details,
     sections: [
       data?.summary,
@@ -53,13 +60,17 @@ export function ResumesDashboard() {
   const [resumes, setResumes] = useState<SavedResume[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [managementError, setManagementError] = useState<string | null>(null)
+  const [renamingResumeId, setRenamingResumeId] = useState<string | null>(null)
+  const [renameTitle, setRenameTitle] = useState("")
+  const [managingResumeId, setManagingResumeId] = useState<string | null>(null)
   const startedHydration = useRef(false)
 
   useEffect(() => {
     if (hasHydrated || startedHydration.current) return
 
     startedHydration.current = true
-    void useResumeStore.persist.rehydrate()
+    void hydrateResumeStore()
   }, [hasHydrated])
 
   useEffect(() => {
@@ -122,6 +133,63 @@ export function ResumesDashboard() {
     router.push(
       `/editor?template=${encodeURIComponent(resume.resume_data.templateId)}`,
     )
+  }
+
+  const beginRename = (resume: SavedResume) => {
+    setManagementError(null)
+    setRenamingResumeId(resume.id)
+    setRenameTitle(resume.title)
+  }
+
+  const saveRename = async (resume: SavedResume) => {
+    if (!userId) return
+
+    const title = renameTitle.trim()
+    if (!title) {
+      setManagementError("أدخل اسمًا للسيرة الذاتية.")
+      return
+    }
+
+    setManagingResumeId(resume.id)
+    setManagementError(null)
+    try {
+      const renamed = await renameResume(userId, resume.id, title)
+      if (useAuthStore.getState().user?.id !== userId) return
+      setResumes((current) =>
+        current.map((item) => (item.id === renamed.id ? renamed : item)),
+      )
+      setRenamingResumeId(null)
+    } catch (cause: unknown) {
+      console.error("Could not rename the user's saved resume.", cause)
+      setManagementError("تعذرت إعادة تسمية السيرة. حاول مرة أخرى.")
+    } finally {
+      setManagingResumeId(null)
+    }
+  }
+
+  const removeResume = async (resume: SavedResume) => {
+    if (!userId) return
+    if (
+      !window.confirm(
+        `هل تريد حذف "${resume.title}"؟ لا يمكن التراجع عن هذا الإجراء.`,
+      )
+    ) {
+      return
+    }
+
+    setManagingResumeId(resume.id)
+    setManagementError(null)
+    try {
+      await deleteResume(userId, resume.id)
+      if (useAuthStore.getState().user?.id !== userId) return
+      setResumes((current) => current.filter((item) => item.id !== resume.id))
+      if (renamingResumeId === resume.id) setRenamingResumeId(null)
+    } catch (cause: unknown) {
+      console.error("Could not delete the user's saved resume.", cause)
+      setManagementError("تعذر حذف السيرة. حاول مرة أخرى.")
+    } finally {
+      setManagingResumeId(null)
+    }
   }
 
   return (
@@ -187,6 +255,14 @@ export function ResumesDashboard() {
                 </button>
               </div>
             )}
+            {managementError && (
+              <p
+                className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+                role="alert"
+              >
+                {managementError}
+              </p>
+            )}
 
             {isLoading ? (
               <div
@@ -249,9 +325,71 @@ export function ResumesDashboard() {
                         </button>
                       </div>
                       <div className="p-4">
-                        <h2 className="truncate text-sm font-bold">
-                          {summary.name}
-                        </h2>
+                        {renamingResumeId === resume.id ? (
+                          <form
+                            className="flex flex-wrap gap-2"
+                            onSubmit={(event) => {
+                              event.preventDefault()
+                              void saveRename(resume)
+                            }}
+                          >
+                            <label className="sr-only" htmlFor={`resume-title-${resume.id}`}>
+                              اسم السيرة الذاتية
+                            </label>
+                            <input
+                              id={`resume-title-${resume.id}`}
+                              className="min-w-0 flex-1 rounded-lg border border-[#d6dfda] bg-white px-3 py-2 text-sm text-[#18302c] outline-none focus:border-[#568478] dark:border-[#446958] dark:bg-[#222e2a] dark:text-[#e7eeeb]"
+                              maxLength={120}
+                              onChange={(event) =>
+                                setRenameTitle(event.target.value)
+                              }
+                              value={renameTitle}
+                              autoFocus
+                              disabled={managingResumeId === resume.id}
+                            />
+                            <button
+                              type="submit"
+                              className="rounded-lg bg-[#173f38] px-3 py-2 text-xs font-bold text-white disabled:opacity-60 dark:bg-[#34775b]"
+                              disabled={managingResumeId === resume.id}
+                            >
+                              حفظ
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-lg border border-[#d6dfda] px-3 py-2 text-xs font-bold disabled:opacity-60 dark:border-[#446958]"
+                              disabled={managingResumeId === resume.id}
+                              onClick={() => setRenamingResumeId(null)}
+                            >
+                              إلغاء
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            <h2 className="truncate text-sm font-bold">
+                              {summary.name}
+                            </h2>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className="rounded-lg border border-[#d6dfda] px-3 py-2 text-xs font-bold text-[#315d53] transition hover:bg-[#f4f7f5] disabled:cursor-wait disabled:opacity-60 dark:border-[#446958] dark:text-[#bde2ca] dark:hover:bg-[#24352d]"
+                                disabled={managingResumeId === resume.id}
+                                onClick={() => beginRename(resume)}
+                              >
+                                إعادة تسمية
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-wait disabled:opacity-60 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40"
+                                disabled={managingResumeId === resume.id}
+                                onClick={() => void removeResume(resume)}
+                              >
+                                {managingResumeId === resume.id
+                                  ? "جارٍ التنفيذ..."
+                                  : "حذف"}
+                              </button>
+                            </div>
+                          </>
+                        )}
                         <p className="dashboard-resume-date mt-2 inline-flex items-center gap-2 text-[11px] text-[#77817e] dark:text-[#aab8b2]">
                           <span aria-hidden="true" />
                           <span className="dashboard-resume-badge">آخر تعديل</span>

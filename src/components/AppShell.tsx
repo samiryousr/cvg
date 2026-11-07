@@ -4,7 +4,11 @@ import { useEffect } from "react"
 import type { ReactNode } from "react"
 import { usePathname } from "next/navigation"
 import { useAuthStore } from "@/store/useAuthStore"
-import { useResumeStore } from "@/features/resume-builder/store"
+import {
+  getPreferredColorMode,
+  hydrateResumeStore,
+  useResumeStore,
+} from "@/features/resume-builder/store"
 
 export function AppShell({ children }: { children: ReactNode }) {
   const colorMode = useResumeStore((state) => state.colorMode)
@@ -17,6 +21,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     void initializeAuth()
   }, [initializeAuth])
+
+  useEffect(() => {
+    useResumeStore.setState({ colorMode: getPreferredColorMode() })
+    void hydrateResumeStore()
+  }, [])
 
   useEffect(() => {
     if (!userId || !hasHydrated || pathname === "/resumes") return

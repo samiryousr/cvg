@@ -8,6 +8,7 @@ import {
 } from "@/features/resume-builder/model"
 
 import {
+  getPreferredColorMode,
   useResumeSaveStatus,
   useResumeStore,
 } from "@/features/resume-builder/store"
@@ -40,6 +41,11 @@ function resetStore() {
     },
 
     hasHydrated: false,
+    cloudResumeLoadStatus: "idle",
+    cloudResumeId: undefined,
+    cloudResumeOwnerId: undefined,
+    cloudResumeSnapshot: undefined,
+    cloudResumeLoadedThisSession: false,
   })
 
   useResumeSaveStatus.setState({ status: "idle" })
@@ -679,5 +685,28 @@ describe("resume store persistence normalization", () => {
 
     store.setTemplate("classic")
     expect(useResumeStore.getState().templateId).toBe("classic")
+  })
+
+  it("keeps the selected theme when creating a blank resume", () => {
+    const store = useResumeStore.getState()
+    store.setColorMode("dark")
+
+    store.resetResume()
+
+    expect(useResumeStore.getState().colorMode).toBe("dark")
+    expect(useResumeStore.getState().personal).toEqual(emptyResume.personal)
+  })
+
+  it("uses the system theme by default and persists explicit theme choices", () => {
+    vi.stubGlobal("window", {
+      matchMedia: () => ({ matches: true }),
+    })
+
+    expect(getPreferredColorMode()).toBe("dark")
+
+    useResumeStore.getState().setColorMode("light")
+
+    expect(localStorage.getItem("sirti-theme")).toBe("light")
+    expect(getPreferredColorMode()).toBe("light")
   })
 })

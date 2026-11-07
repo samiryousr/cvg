@@ -4,6 +4,7 @@ const supabase = vi.hoisted(() => {
   const builder = {
     update: vi.fn(),
     insert: vi.fn(),
+    delete: vi.fn(),
     select: vi.fn(),
     eq: vi.fn(),
     single: vi.fn(),
@@ -13,6 +14,7 @@ const supabase = vi.hoisted(() => {
   for (const method of [
     builder.update,
     builder.insert,
+    builder.delete,
     builder.select,
     builder.eq,
   ]) {
@@ -34,7 +36,9 @@ vi.mock("@/lib/supabase", () => ({
 
 import { emptyResume } from "@/features/resume-builder/model"
 import {
+  deleteResume,
   fetchUserResumes,
+  renameResume,
   saveResume,
 } from "@/services/resumeService"
 
@@ -44,6 +48,7 @@ describe("resume Supabase service", () => {
     supabase.from.mockClear()
     supabase.builder.update.mockClear()
     supabase.builder.insert.mockClear()
+    supabase.builder.delete.mockClear()
     supabase.builder.select.mockClear()
     supabase.builder.eq.mockClear()
     supabase.builder.single.mockReset()
@@ -91,7 +96,6 @@ describe("resume Supabase service", () => {
 
     expect(supabase.builder.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "My resume",
         resume_data: emptyResume,
         updated_at: expect.any(String),
       }),
@@ -134,5 +138,49 @@ describe("resume Supabase service", () => {
     expect(supabase.builder.order).toHaveBeenCalledWith("created_at", {
       ascending: false,
     })
+  })
+
+  it("renames only the requested resume owned by the authenticated user", async () => {
+    const renamed = {
+      id: "resume-1",
+      user_id: "user-1",
+      title: "Product Designer",
+      resume_data: emptyResume,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-02T00:00:00.000Z",
+    }
+    supabase.builder.single.mockResolvedValue({ data: renamed, error: null })
+
+    await expect(
+      renameResume("user-1", "resume-1", "  Product Designer  "),
+    ).resolves.toEqual(renamed)
+
+    expect(supabase.builder.update).toHaveBeenCalledWith({
+      title: "Product Designer",
+      updated_at: expect.any(String),
+    })
+    expect(supabase.builder.eq).toHaveBeenNthCalledWith(1, "id", "resume-1")
+    expect(supabase.builder.eq).toHaveBeenNthCalledWith(
+      2,
+      "user_id",
+      "user-1",
+    )
+  })
+
+  it("deletes only the requested resume owned by the authenticated user", async () => {
+    supabase.builder.single.mockResolvedValue({
+      data: { id: "resume-1" },
+      error: null,
+    })
+
+    await expect(deleteResume("user-1", "resume-1")).resolves.toBeUndefined()
+
+    expect(supabase.builder.delete).toHaveBeenCalledOnce()
+    expect(supabase.builder.eq).toHaveBeenNthCalledWith(1, "id", "resume-1")
+    expect(supabase.builder.eq).toHaveBeenNthCalledWith(
+      2,
+      "user_id",
+      "user-1",
+    )
   })
 })

@@ -36,7 +36,6 @@ export async function saveResume(
     ? await supabase
         .from("resumes")
         .update({
-          title,
           resume_data: resumeData,
           updated_at: new Date().toISOString(),
         })
@@ -75,4 +74,52 @@ export async function fetchUserResumes(
   if (error) throw error
 
   return data ?? []
+}
+
+export async function renameResume(
+  userId: string,
+  resumeId: string,
+  title: string,
+): Promise<SavedResume> {
+  if (!userId.trim()) throw new Error("A signed-in user is required.")
+
+  const safeTitle = title.trim()
+  if (!safeTitle) throw new Error("A resume title is required.")
+
+  await assertCurrentUser(userId)
+
+  const { data, error } = await getSupabaseClient()
+    .from("resumes")
+    .update({
+      title: safeTitle,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", resumeId)
+    .eq("user_id", userId)
+    .select(resumeColumns)
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error("Supabase did not return the renamed resume.")
+
+  return data
+}
+
+export async function deleteResume(
+  userId: string,
+  resumeId: string,
+): Promise<void> {
+  if (!userId.trim()) throw new Error("A signed-in user is required.")
+  await assertCurrentUser(userId)
+
+  const { data, error } = await getSupabaseClient()
+    .from("resumes")
+    .delete()
+    .eq("id", resumeId)
+    .eq("user_id", userId)
+    .select("id")
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error("Supabase did not confirm the resume deletion.")
 }

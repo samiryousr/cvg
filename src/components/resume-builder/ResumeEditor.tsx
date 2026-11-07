@@ -101,6 +101,10 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     cloudResumeLoadError: isArabic
       ? "تعذر تحميل السيرة من حسابك. يمكنك المحاولة مرة أخرى."
       : "Could not load your resume from your account. Please try again.",
+    localDraftPreserved: isArabic
+      ? "احتفظنا بمسودتك المحلية ولم نستبدلها بالسيرة المحفوظة في حسابك."
+      : "Your local draft was preserved instead of being replaced by your saved resume.",
+    viewSavedResumes: isArabic ? "عرض السير المحفوظة" : "View saved resumes",
     retry: isArabic ? "إعادة المحاولة" : "Retry",
     newResume: isArabic ? "سيرة ذاتية جديدة" : "Untitled resume",
     home: isArabic ? "العودة للرئيسية" : "Back to home",
@@ -502,6 +506,14 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
             {copy.retry}
           </button>
         </div>
+      )}
+      {user && cloudResumeLoadStatus === "local-draft-preserved" && (
+        <p className="cloud-save-feedback" role="status" aria-live="polite">
+          {copy.localDraftPreserved}{" "}
+          <Link className="font-bold underline underline-offset-4" href="/resumes">
+            {copy.viewSavedResumes}
+          </Link>
+        </p>
       )}
       <div className="editor-layout">
         <div

@@ -45,6 +45,8 @@ describe("resume store cloud actions", () => {
       cloudResumeLoadStatus: "idle",
       cloudResumeId: undefined,
       cloudResumeOwnerId: undefined,
+      cloudResumeSnapshot: undefined,
+      cloudResumeLoadedThisSession: false,
       hasHydrated: true,
     })
   })
@@ -94,11 +96,13 @@ describe("resume store cloud actions", () => {
   })
 
   it("restores the latest saved resume and its ID", async () => {
+    useResumeStore.getState().setColorMode("dark")
     const remoteResume = {
       id: "cloud-resume-2",
       user_id: "user-1",
       resume_data: {
         ...emptyResume,
+        colorMode: "light" as const,
         personal: { ...emptyResume.personal, name: "Cloud User" },
       },
     }
@@ -111,6 +115,48 @@ describe("resume store cloud actions", () => {
     expect(mocks.fetchUserResumes).toHaveBeenCalledWith("user-1")
     expect(useResumeStore.getState().personal.name).toBe("Cloud User")
     expect(useResumeStore.getState().cloudResumeId).toBe("cloud-resume-2")
+    expect(useResumeStore.getState().colorMode).toBe("dark")
+    expect(useResumeStore.getState().cloudResumeSnapshot).toBeDefined()
+    expect(useResumeStore.getState().cloudResumeLoadedThisSession).toBe(true)
+  })
+
+  it("refreshes an unchanged local copy of a cloud resume after rehydration", async () => {
+    const remoteResume: SavedResume = {
+      id: "cloud-resume-2",
+      user_id: "user-1",
+      title: "Cloud User",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+      resume_data: {
+        ...emptyResume,
+        personal: { ...emptyResume.personal, name: "Cloud User" },
+      },
+    }
+    mocks.fetchUserResumes.mockResolvedValue([remoteResume])
+
+    await useResumeStore.getState().loadUserResume()
+    useResumeStore.setState({ cloudResumeLoadedThisSession: false })
+    await useResumeStore.getState().loadUserResume()
+
+    expect(mocks.fetchUserResumes).toHaveBeenCalledTimes(2)
+    expect(useResumeStore.getState().cloudResumeId).toBe("cloud-resume-2")
+    expect(useResumeStore.getState().personal.name).toBe("Cloud User")
+  })
+
+  it("retains the cloud link when an existing local cloud draft is edited", async () => {
+    useResumeStore.setState({
+      personal: { ...emptyResume.personal, name: "Edited cloud draft" },
+      cloudResumeId: "cloud-resume-4",
+      cloudResumeOwnerId: "user-1",
+      cloudResumeSnapshot: "previously-saved-snapshot",
+    })
+
+    await useResumeStore.getState().loadUserResume()
+
+    expect(mocks.fetchUserResumes).not.toHaveBeenCalled()
+    expect(useResumeStore.getState().personal.name).toBe("Edited cloud draft")
+    expect(useResumeStore.getState().cloudResumeId).toBe("cloud-resume-4")
+    expect(useResumeStore.getState().cloudResumeOwnerId).toBe("user-1")
   })
 
   it("keeps an explicitly selected resume when the auth shell requests a default", async () => {
@@ -140,6 +186,53 @@ describe("resume store cloud actions", () => {
 
     expect(mocks.fetchUserResumes).not.toHaveBeenCalled()
     expect(useResumeStore.getState().personal.name).toBe("")
+  })
+
+  it("preserves an existing local draft instead of replacing it with cloud data", async () => {
+    useResumeStore.getState().updatePersonal("name", "Local draft")
+
+    await useResumeStore.getState().loadUserResume()
+
+    expect(mocks.fetchUserResumes).not.toHaveBeenCalled()
+    expect(useResumeStore.getState().personal.name).toBe("Local draft")
+    expect(useResumeStore.getState().cloudResumeLoadStatus).toBe(
+      "local-draft-preserved",
+    )
+    expect(useResumeStore.getState().cloudResumeOwnerId).toBeUndefined()
+    expect(useResumeStore.getState().cloudResumeId).toBeUndefined()
+  })
+
+  it("preserves edits made while the cloud resume is loading", async () => {
+    let resolveFetch!: (resumes: SavedResume[]) => void
+    mocks.fetchUserResumes.mockImplementation(
+      () =>
+        new Promise<SavedResume[]>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    const loading = useResumeStore.getState().loadUserResume()
+    useResumeStore.getState().updatePersonal("name", "Edited during sync")
+    resolveFetch([
+      {
+        id: "cloud-resume-3",
+        user_id: "user-1",
+        title: "Cloud resume",
+        created_at: "2026-01-01T00:00:00.000Z",
+        updated_at: "2026-01-01T00:00:00.000Z",
+        resume_data: {
+          ...emptyResume,
+          personal: { ...emptyResume.personal, name: "Cloud resume" },
+        },
+      },
+    ])
+    await loading
+
+    expect(useResumeStore.getState().personal.name).toBe("Edited during sync")
+    expect(useResumeStore.getState().cloudResumeLoadStatus).toBe(
+      "local-draft-preserved",
+    )
+    expect(useResumeStore.getState().cloudResumeId).toBeUndefined()
   })
 
   it("does not silently mark a failed save as successful", async () => {

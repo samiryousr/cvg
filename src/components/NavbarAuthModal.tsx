@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { createPortal } from "react-dom"
 
 import { useAuthStore } from "@/store/useAuthStore"
@@ -17,6 +17,11 @@ export function NavbarAuthModal({
   onAuthenticated,
 }: NavbarAuthModalProps) {
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
+  const dialogRef = useRef<HTMLElement>(null)
+  const onCloseRef = useRef(onClose)
+  const triggerElementRef = useRef<HTMLElement | null>(null)
+  const restoreFocusTimeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [mode, setMode] = useState<AuthMode>("sign-in")
 
@@ -43,16 +48,95 @@ export function NavbarAuthModal({
   const clearMessages = useAuthStore((state) => state.clearMessages)
 
   useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    if (restoreFocusTimeoutRef.current !== null) {
+      clearTimeout(restoreFocusTimeoutRef.current)
+      restoreFocusTimeoutRef.current = null
+    }
+
+    const activeElement = document.activeElement
+    triggerElementRef.current =
+      activeElement instanceof HTMLElement ? activeElement : null
     setPortalRoot(document.body)
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
+      if (event.key === "Escape") {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+
+      if (event.key !== "Tab") return
+
+      const dialog = dialogRef.current
+      if (!dialog) return
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getAttribute("aria-hidden") !== "true")
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault()
+        dialog.focus()
+      } else if (
+        event.shiftKey &&
+        (document.activeElement === firstElement ||
+          !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === lastElement ||
+          !dialog.contains(document.activeElement))
+      ) {
+        event.preventDefault()
+        firstElement.focus()
+      }
     }
 
-    window.addEventListener("keydown", handleKeyDown)
+    const keepFocusInDialog = (event: FocusEvent) => {
+      if (
+        dialogRef.current &&
+        event.target instanceof Node &&
+        !dialogRef.current.contains(event.target)
+      ) {
+        const firstElement =
+          dialogRef.current.querySelector<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          )
+        firstElement?.focus()
+      }
+    }
 
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [onClose])
+    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("focusin", keepFocusInDialog)
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.removeEventListener("focusin", keepFocusInDialog)
+      const trigger = triggerElementRef.current
+      restoreFocusTimeoutRef.current = setTimeout(() => {
+        if (trigger?.isConnected) trigger.focus()
+      }, 0)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!portalRoot) return
+
+    const firstElement = dialogRef.current?.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )
+    firstElement?.focus()
+  }, [portalRoot])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -96,8 +180,10 @@ export function NavbarAuthModal({
       }}
     >
       <section
+        ref={dialogRef}
         aria-labelledby="navbar-auth-title"
         aria-modal="true"
+        tabIndex={-1}
         className="relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-[#e3e7e3] bg-white p-6 text-[#18302c] shadow-2xl dark:border-[#34443f] dark:bg-[#19221f] dark:text-[#e7eeeb] sm:p-8"
         role="dialog"
         dir="rtl"

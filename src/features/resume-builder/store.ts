@@ -6,6 +6,7 @@ import {
   defaultHiddenResumeSections,
   defaultResumeSectionOrder,
   emptyResume,
+  hasResumeContent,
   initialResume,
   legacyPreviewResume,
   type Award,
@@ -46,6 +47,11 @@ import {
 
 type Direction = -1 | 1
 type ResumeSaveStatus = "idle" | "saving" | "saved" | "error"
+type CloudResumeLoadStatus =
+  | "idle"
+  | "loading"
+  | "error"
+  | "local-draft-preserved"
 
 export const useResumeSaveStatus = create<{ status: ResumeSaveStatus }>(() => ({
   status: "idle",
@@ -292,11 +298,15 @@ type ResumeActions = {
 
   personalInfoErrors: ReturnType<typeof validatePersonalInfo>
 
-  cloudResumeLoadStatus: "idle" | "loading" | "error"
+  cloudResumeLoadStatus: CloudResumeLoadStatus
 
   cloudResumeId: string | undefined
 
   cloudResumeOwnerId: string | undefined
+
+  cloudResumeSnapshot: string | undefined
+
+  cloudResumeLoadedThisSession: boolean
 
   saveCurrentResume: () => Promise<SavedResume>
 
@@ -311,9 +321,11 @@ export type ResumeStore = ResumeData & {
   hasHydrated: boolean
   isSaving: boolean
   personalInfoErrors: ReturnType<typeof validatePersonalInfo>
-  cloudResumeLoadStatus: "idle" | "loading" | "error"
+  cloudResumeLoadStatus: CloudResumeLoadStatus
   cloudResumeId: string | undefined
   cloudResumeOwnerId: string | undefined
+  cloudResumeSnapshot: string | undefined
+  cloudResumeLoadedThisSession: boolean
 } & ResumeActions
 
 const createId = () => globalThis.crypto.randomUUID()
@@ -343,6 +355,104 @@ function getResumeData(state: ResumeStore): ResumeData {
     colorMode: state.colorMode,
     editorLanguage: state.editorLanguage,
   }
+}
+
+function getStoredThemePreference(legacyColorMode?: unknown): ColorMode {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const storedTheme = localStorage.getItem("sirti-theme")
+      if (storedTheme === "light" || storedTheme === "dark") return storedTheme
+    }
+
+    if (legacyColorMode === "light" || legacyColorMode === "dark") {
+      return legacyColorMode
+    }
+
+    const storedResume =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("sirti-resume")
+        : null
+    if (storedResume) {
+      const parsed: unknown = JSON.parse(storedResume)
+      if (isRecord(parsed) && isRecord(parsed.state)) {
+        const storedColorMode = parsed.state.colorMode
+        if (storedColorMode === "light" || storedColorMode === "dark") {
+          return storedColorMode
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Could not read the saved theme preference.", error)
+  }
+
+  return typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light"
+}
+
+function persistThemePreference(colorMode: ColorMode) {
+  if (typeof window === "undefined") return
+
+  try {
+    localStorage.setItem("sirti-theme", colorMode)
+  } catch (error) {
+    console.error("Could not save the theme preference.", error)
+  }
+}
+
+function hasActiveLocalDraft(state: ResumeStore): boolean {
+  const resume = getResumeData(state)
+  return (
+    hasResumeContent(resume) ||
+    resume.experiences.length > 0 ||
+    resume.education.length > 0 ||
+    resume.projects.length > 0 ||
+    resume.certifications.length > 0 ||
+    resume.skills.length > 0 ||
+    resume.languages.length > 0 ||
+    resume.awards.length > 0 ||
+    resume.volunteerExperiences.length > 0 ||
+    resume.publications.length > 0 ||
+    resume.references.length > 0 ||
+    resume.customSections.length > 0 ||
+    JSON.stringify(resume.sectionLayout) !==
+      JSON.stringify(emptyResume.sectionLayout)
+  )
+}
+
+function getResumeSnapshot(resume: ResumeData): string {
+  const serialized = JSON.stringify({
+    personal: resume.personal,
+    summary: resume.summary,
+    experiences: resume.experiences,
+    education: resume.education,
+    projects: resume.projects,
+    certifications: resume.certifications,
+    skills: resume.skills,
+    languages: resume.languages,
+    awards: resume.awards,
+    volunteerExperiences: resume.volunteerExperiences,
+    publications: resume.publications,
+    references: resume.references,
+    customSections: resume.customSections,
+    sectionLayout: resume.sectionLayout,
+  })
+  let firstHash = 0x811c9dc5
+  let secondHash = 0x9e3779b9
+
+  for (let index = 0; index < serialized.length; index += 1) {
+    const character = serialized.charCodeAt(index)
+    firstHash = Math.imul(firstHash ^ character, 0x01000193)
+    secondHash = Math.imul(secondHash ^ character, 0x85ebca6b)
+  }
+
+  return `${serialized.length}:${firstHash >>> 0}:${secondHash >>> 0}`
+}
+
+function getDraftSnapshot(state: ResumeStore): string {
+  return getResumeSnapshot(getResumeData(state))
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -954,6 +1064,10 @@ export const useResumeStore = create<ResumeStore>()(
       cloudResumeId: undefined,
 
       cloudResumeOwnerId: undefined,
+
+      cloudResumeSnapshot: undefined,
+
+      cloudResumeLoadedThisSession: false,
 
       updatePersonal: (key, value) =>
         set((state) => {
@@ -1789,7 +1903,10 @@ export const useResumeStore = create<ResumeStore>()(
             : emptyResume.primaryColor,
         }),
 
-      setColorMode: (colorMode) => set({ colorMode }),
+      setColorMode: (colorMode) => {
+        persistThemePreference(colorMode)
+        set({ colorMode })
+      },
 
       setEditorLanguage: (editorLanguage) => set({ editorLanguage }),
 
@@ -1813,13 +1930,17 @@ export const useResumeStore = create<ResumeStore>()(
           const savedResume = await saveResume(
             user.id,
             getResumeData(currentState),
-            currentState.cloudResumeId,
+            currentState.cloudResumeOwnerId === user.id
+              ? currentState.cloudResumeId
+              : undefined,
           )
 
           if (useAuthStore.getState().user?.id === user.id) {
             set({
               cloudResumeId: savedResume.id,
               cloudResumeOwnerId: user.id,
+              cloudResumeSnapshot: getResumeSnapshot(savedResume.resume_data),
+              cloudResumeLoadedThisSession: true,
             })
           }
           return savedResume
@@ -1836,14 +1957,49 @@ export const useResumeStore = create<ResumeStore>()(
             cloudResumeLoadStatus: "idle",
             cloudResumeId: undefined,
             cloudResumeOwnerId: undefined,
+            cloudResumeSnapshot: undefined,
+            cloudResumeLoadedThisSession: false,
           })
           return null
         }
-        if (get().cloudResumeOwnerId === user.id) return null
+        if (get().cloudResumeLoadedThisSession) return null
+        const initialState = get()
+        const isCurrentUsersResume =
+          initialState.cloudResumeOwnerId === user.id
+        const initialDraftSnapshot = getDraftSnapshot(initialState)
+        const hasUnchangedCloudCopy =
+          isCurrentUsersResume &&
+          initialState.cloudResumeSnapshot === initialDraftSnapshot
+
+        if (hasUnchangedCloudCopy && !initialState.cloudResumeId) {
+          set({
+            cloudResumeLoadStatus: "idle",
+            cloudResumeLoadedThisSession: true,
+          })
+          return null
+        }
+
+        if (
+          hasActiveLocalDraft(initialState) &&
+          !hasUnchangedCloudCopy
+        ) {
+          set({
+            cloudResumeId: isCurrentUsersResume
+              ? initialState.cloudResumeId
+              : undefined,
+            cloudResumeOwnerId: isCurrentUsersResume ? user.id : undefined,
+            cloudResumeLoadStatus: "local-draft-preserved",
+            cloudResumeLoadedThisSession: true,
+          })
+          return null
+        }
+        const initialCloudResumeId = isCurrentUsersResume
+          ? initialState.cloudResumeId
+          : undefined
         set({
           cloudResumeLoadStatus: "loading",
-          cloudResumeId: undefined,
-          cloudResumeOwnerId: undefined,
+          cloudResumeId: initialCloudResumeId,
+          cloudResumeOwnerId: initialCloudResumeId ? user.id : undefined,
         })
 
         let resumes: SavedResume[]
@@ -1869,48 +2025,77 @@ export const useResumeStore = create<ResumeStore>()(
           return null
         }
 
+        const currentState = get()
+        if (getDraftSnapshot(currentState) !== initialDraftSnapshot) {
+          set({
+            cloudResumeId: initialCloudResumeId,
+            cloudResumeOwnerId: initialCloudResumeId ? user.id : undefined,
+            cloudResumeLoadStatus: "local-draft-preserved",
+            cloudResumeLoadedThisSession: true,
+          })
+          return null
+        }
+
         const latestResume = resumes[0]
         if (!latestResume) {
           set({
             cloudResumeLoadStatus: "idle",
             cloudResumeId: undefined,
             cloudResumeOwnerId: user.id,
+            cloudResumeSnapshot: undefined,
+            cloudResumeLoadedThisSession: true,
           })
           return null
         }
 
+        const normalizedResume = normalizeResumeData(
+          latestResume.resume_data,
+          emptyResume,
+        )
         set({
-          ...normalizeResumeData(latestResume.resume_data, emptyResume),
+          ...normalizedResume,
+          colorMode: currentState.colorMode,
           personalInfoErrors: {},
           cloudResumeLoadStatus: "idle",
           cloudResumeId: latestResume.id,
           cloudResumeOwnerId: user.id,
+          cloudResumeSnapshot: getResumeSnapshot(normalizedResume),
+          cloudResumeLoadedThisSession: true,
         })
         return latestResume
       },
 
       openSavedResume: (resume) =>
-        set({
-          ...normalizeResumeData(resume.resume_data, emptyResume),
-          personalInfoErrors: {},
-          cloudResumeLoadStatus: "idle",
-          cloudResumeId: resume.id,
-          cloudResumeOwnerId: resume.user_id,
+        set((state) => {
+          const resumeData = normalizeResumeData(resume.resume_data, emptyResume)
+          return {
+            ...resumeData,
+            colorMode: state.colorMode,
+            personalInfoErrors: {},
+            cloudResumeLoadStatus: "idle",
+            cloudResumeId: resume.id,
+            cloudResumeOwnerId: resume.user_id,
+            cloudResumeSnapshot: getResumeSnapshot(resumeData),
+            cloudResumeLoadedThisSession: true,
+          }
         }),
 
       resetResume: () =>
-        set({
+        set((state) => ({
           ...emptyResume,
+          colorMode: state.colorMode,
           personalInfoErrors: {},
           cloudResumeLoadStatus: "idle",
           cloudResumeId: undefined,
           cloudResumeOwnerId: useAuthStore.getState().user?.id,
+          cloudResumeSnapshot: getResumeSnapshot(emptyResume),
+          cloudResumeLoadedThisSession: true,
           personal: { ...emptyResume.personal },
           sectionLayout: {
             order: [...defaultResumeSectionOrder],
             hidden: [...defaultHiddenResumeSections],
           },
-        }),
+        })),
     }),
 
     {
@@ -1955,16 +2140,37 @@ export const useResumeStore = create<ResumeStore>()(
 
         primaryColor: state.primaryColor,
 
-        colorMode: state.colorMode,
-
         editorLanguage: state.editorLanguage,
 
         documentLanguage: state.documentLanguage,
+
+        cloudResumeId: state.cloudResumeId,
+
+        cloudResumeOwnerId: state.cloudResumeOwnerId,
+
+        cloudResumeSnapshot: state.cloudResumeSnapshot,
       }),
 
       migrate: (persistedState) => {
         const resume = normalizeResumeData(persistedState, emptyResume)
-        return stripPreviewResume(resume)
+        return {
+          ...stripPreviewResume(resume),
+          cloudResumeId:
+            isRecord(persistedState) &&
+            typeof persistedState.cloudResumeId === "string"
+              ? persistedState.cloudResumeId
+              : undefined,
+          cloudResumeOwnerId:
+            isRecord(persistedState) &&
+            typeof persistedState.cloudResumeOwnerId === "string"
+              ? persistedState.cloudResumeOwnerId
+              : undefined,
+          cloudResumeSnapshot:
+            isRecord(persistedState) &&
+            typeof persistedState.cloudResumeSnapshot === "string"
+              ? persistedState.cloudResumeSnapshot
+              : undefined,
+        }
       },
 
       merge: (persistedState, currentState) =>
@@ -1973,6 +2179,27 @@ export const useResumeStore = create<ResumeStore>()(
           : {
               ...currentState,
               ...normalizeResumeData(persistedState, emptyResume),
+              colorMode: getStoredThemePreference(
+                isRecord(persistedState)
+                  ? persistedState.colorMode
+                  : undefined,
+              ),
+              cloudResumeId:
+                isRecord(persistedState) &&
+                typeof persistedState.cloudResumeId === "string"
+                  ? persistedState.cloudResumeId
+                  : undefined,
+              cloudResumeOwnerId:
+                isRecord(persistedState) &&
+                typeof persistedState.cloudResumeOwnerId === "string"
+                  ? persistedState.cloudResumeOwnerId
+                  : undefined,
+              cloudResumeSnapshot:
+                isRecord(persistedState) &&
+                typeof persistedState.cloudResumeSnapshot === "string"
+                  ? persistedState.cloudResumeSnapshot
+                  : undefined,
+              cloudResumeLoadedThisSession: false,
             },
 
       onRehydrateStorage: () => (_state, error) => {
@@ -1989,3 +2216,28 @@ export const useResumeStore = create<ResumeStore>()(
     },
   ),
 )
+
+let resumeHydration: Promise<void> | null = null
+
+export function hydrateResumeStore(): Promise<void> {
+  if (useResumeStore.getState().hasHydrated) return Promise.resolve()
+  if (resumeHydration) return resumeHydration
+
+  const pendingHydration = Promise.resolve(
+    useResumeStore.persist.rehydrate(),
+  ).then(() => undefined)
+  resumeHydration = pendingHydration
+  void pendingHydration.then(
+    () => {
+      if (resumeHydration === pendingHydration) resumeHydration = null
+    },
+    () => {
+      if (resumeHydration === pendingHydration) resumeHydration = null
+    },
+  )
+  return pendingHydration
+}
+
+export function getPreferredColorMode(): ColorMode {
+  return getStoredThemePreference()
+}
