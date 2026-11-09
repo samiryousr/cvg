@@ -2166,9 +2166,51 @@
 .editor-shell .home-button,
 .editor-shell .toolbar-select select,
 .editor-shell .download-button,
+.editor-shell .ats-check-button,
 .editor-shell .cloud-save-button,
 .editor-shell .theme-toggle {
   border-radius: 12px;
+}
+.editor-shell .ats-check-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid #34725f;
+  background: linear-gradient(135deg, #43866d, #28624f);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(40, 98, 79, .18), inset 0 1px 0 rgba(255, 255, 255, .16);
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.editor-shell .ats-check-button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+.editor-shell .ats-check-button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #4a9177, #2d705a);
+  box-shadow: 0 7px 17px rgba(40, 98, 79, .24), inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+.editor-shell .ats-check-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(40, 98, 79, .18);
+}
+.theme-dark .editor-shell .ats-check-button {
+  border-color: #579477;
+  background: linear-gradient(135deg, #3e805f, #2d634a);
+  color: #f3faf5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+.theme-dark .editor-shell .ats-check-button:hover {
+  background: linear-gradient(135deg, #4a916d, #347354);
+  box-shadow: 0 7px 17px rgba(0, 0, 0, .26), inset 0 1px 0 rgba(255, 255, 255, .14);
 }
 .editor-shell .form-panel {
   margin: 14px 0 14px 14px;
@@ -2267,6 +2309,7 @@
   .dashboard-resume-card,
   .dashboard-create-card,
   .save-success-icon,
+  .editor-shell .ats-check-button,
   .editor-shell .cloud-save-button[aria-busy="true"] {
     animation: none;
     transition: none;
