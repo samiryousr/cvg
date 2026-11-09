@@ -472,7 +472,28 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
             type="button"
             onClick={() => setIsAtsOpen(true)}
           >
-            {copy.checkAts}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              focusable="false"
+            >
+              <path
+                d="M7.25 3.25h-2.5a1.5 1.5 0 0 0-1.5 1.5v2.5m10-4h2.5a1.5 1.5 0 0 1 1.5 1.5v2.5m-14 3.5v2.5a1.5 1.5 0 0 0 1.5 1.5h2.5m10-4v2.5a1.5 1.5 0 0 1-1.5 1.5h-2.5M5 10h10"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="m12.2 7.2 1.1 1.1 2.2-2.2"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>{copy.checkAts}</span>
           </button>
           <button
             className="download-button"
