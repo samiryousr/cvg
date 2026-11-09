@@ -47,6 +47,12 @@ import {
 
 type Direction = -1 | 1
 type ResumeSaveStatus = "idle" | "saving" | "saved" | "error"
+export type CloudAutoSaveStatus =
+  | "local"
+  | "saving"
+  | "saved"
+  | "incomplete"
+  | "error"
 type CloudResumeLoadStatus =
   | "idle"
   | "loading"
@@ -56,6 +62,10 @@ type CloudResumeLoadStatus =
 export const useResumeSaveStatus = create<{ status: ResumeSaveStatus }>(() => ({
   status: "idle",
 }))
+
+export const useCloudAutoSaveStatus = create<{
+  status: CloudAutoSaveStatus
+}>(() => ({ status: "local" }))
 
 const pendingStorageWrites = new Map<string, {
   timer: ReturnType<typeof setTimeout>
@@ -453,6 +463,11 @@ function getResumeSnapshot(resume: ResumeData): string {
 
 function getDraftSnapshot(state: ResumeStore): string {
   return getResumeSnapshot(getResumeData(state))
+}
+
+function getCloudAutoSaveSnapshot(state: ResumeStore): string {
+  const { colorMode: _colorMode, ...resumeData } = getResumeData(state)
+  return JSON.stringify(resumeData)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -2236,6 +2251,166 @@ export function hydrateResumeStore(): Promise<void> {
     },
   )
   return pendingHydration
+}
+
+export function startCloudAutoSave(userId: string, debounceMs = 900) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let saveInProgress = false
+  let stopped = false
+  let deferredSave = false
+  let previousLoadStatus = useResumeStore.getState().cloudResumeLoadStatus
+  let lastSnapshot = getCloudAutoSaveSnapshot(useResumeStore.getState())
+  let snapshotAtLoadStart =
+    previousLoadStatus === "loading" ? lastSnapshot : undefined
+
+  const setStatusForCurrentResume = () => {
+    const state = useResumeStore.getState()
+    const isLinkedResume =
+      state.cloudResumeOwnerId === userId &&
+      state.cloudResumeId !== undefined &&
+      state.cloudResumeSnapshot === getDraftSnapshot(state)
+    useCloudAutoSaveStatus.setState({
+      status: isLinkedResume ? "saved" : "local",
+    })
+  }
+
+  const queueSave = () => {
+    if (stopped) return
+    if (timer) clearTimeout(timer)
+    useCloudAutoSaveStatus.setState({ status: "saving" })
+
+    timer = setTimeout(() => {
+      timer = undefined
+      void saveLatestResume()
+    }, debounceMs)
+  }
+
+  const saveLatestResume = async () => {
+    if (stopped) return
+    const state = useResumeStore.getState()
+    if (
+      useAuthStore.getState().user?.id !== userId ||
+      !state.hasHydrated ||
+      state.cloudResumeLoadStatus === "loading" ||
+      state.cloudResumeLoadStatus === "error"
+    ) {
+      if (
+        useAuthStore.getState().user?.id === userId &&
+        state.cloudResumeLoadStatus === "loading"
+      ) {
+        deferredSave = true
+      }
+      setStatusForCurrentResume()
+      return
+    }
+
+    if (state.isSaving || saveInProgress) {
+      queueSave()
+      return
+    }
+
+    const savingSnapshot = getCloudAutoSaveSnapshot(state)
+    saveInProgress = true
+    try {
+      await state.saveCurrentResume()
+      if (stopped || useAuthStore.getState().user?.id !== userId) return
+
+      const currentState = useResumeStore.getState()
+      if (getCloudAutoSaveSnapshot(currentState) !== savingSnapshot) {
+        queueSave()
+      } else {
+        useCloudAutoSaveStatus.setState({ status: "saved" })
+      }
+    } catch (error) {
+      if (stopped || useAuthStore.getState().user?.id !== userId) return
+      if (error instanceof ResumeValidationError) {
+        useCloudAutoSaveStatus.setState({ status: "incomplete" })
+      } else {
+        console.error("Could not auto-save the resume to the cloud.", error)
+        useCloudAutoSaveStatus.setState({ status: "error" })
+      }
+    } finally {
+      saveInProgress = false
+      if (
+        !stopped &&
+        getCloudAutoSaveSnapshot(useResumeStore.getState()) !== savingSnapshot &&
+        !timer
+      ) {
+        queueSave()
+      }
+    }
+  }
+
+  const unsubscribe = useResumeStore.subscribe((state) => {
+    const nextLoadStatus = state.cloudResumeLoadStatus
+    const nextSnapshot = getCloudAutoSaveSnapshot(state)
+    const snapshotChanged = nextSnapshot !== lastSnapshot
+
+    if (nextLoadStatus === "loading" && previousLoadStatus !== "loading") {
+      snapshotAtLoadStart = nextSnapshot
+    }
+
+    if (nextLoadStatus === "loading") {
+      lastSnapshot = nextSnapshot
+      previousLoadStatus = nextLoadStatus
+      return
+    }
+
+    const editsDuringLoad =
+      previousLoadStatus === "loading" &&
+      nextLoadStatus === "local-draft-preserved" &&
+      snapshotAtLoadStart !== undefined &&
+      nextSnapshot !== snapshotAtLoadStart
+    const cloudResumeLoaded =
+      previousLoadStatus === "loading" &&
+      nextLoadStatus === "idle" &&
+      state.cloudResumeSnapshot === getDraftSnapshot(state)
+    const localDraftNeedsCloudSave =
+      nextLoadStatus === "local-draft-preserved" &&
+      previousLoadStatus !== "local-draft-preserved" &&
+      hasActiveLocalDraft(state) &&
+      (state.cloudResumeOwnerId !== userId ||
+        !state.cloudResumeId ||
+        state.cloudResumeSnapshot !== getDraftSnapshot(state))
+
+    const shouldSave =
+      (snapshotChanged && !cloudResumeLoaded) ||
+      editsDuringLoad ||
+      deferredSave ||
+      localDraftNeedsCloudSave
+    if (nextLoadStatus === "error" && shouldSave) {
+      deferredSave = true
+      lastSnapshot = nextSnapshot
+    } else if (shouldSave) {
+      deferredSave = false
+      lastSnapshot = nextSnapshot
+      queueSave()
+    } else if (previousLoadStatus === "loading") {
+      lastSnapshot = nextSnapshot
+      setStatusForCurrentResume()
+    }
+
+    previousLoadStatus = nextLoadStatus
+  })
+
+  setStatusForCurrentResume()
+  const initialState = useResumeStore.getState()
+  if (
+    initialState.cloudResumeLoadStatus !== "loading" &&
+    initialState.cloudResumeLoadStatus !== "error" &&
+    hasActiveLocalDraft(initialState) &&
+    (initialState.cloudResumeLoadStatus === "local-draft-preserved" ||
+      (initialState.cloudResumeOwnerId === userId &&
+        initialState.cloudResumeSnapshot !== getDraftSnapshot(initialState)))
+  ) {
+    queueSave()
+  }
+
+  return () => {
+    stopped = true
+    if (timer) clearTimeout(timer)
+    unsubscribe()
+  }
 }
 
 export function getPreferredColorMode(): ColorMode {

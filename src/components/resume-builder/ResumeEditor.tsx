@@ -1,9 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useAuthStore } from "@/store/useAuthStore"
 import {
+  startCloudAutoSave,
+  useCloudAutoSaveStatus,
   useResumeSaveStatus,
   useResumeStore,
 } from "@/features/resume-builder/store"
@@ -20,7 +22,7 @@ import {
 } from "@/components/resume-builder/ResumeEditorFields"
 import { LiveResumePreview } from "@/components/resume-builder/LiveResumePreview"
 import { ResumeSectionManager } from "@/components/resume-builder/ResumeSectionManager"
-import { SaveResumeButton } from "@/components/resume-builder/SaveResumeButton"
+import { AtsCheckerModal } from "@/components/resume-builder/AtsCheckerModal"
 import { ThemeToggle } from "@/components/ThemeToggle"
 
 export function ResumeEditor({ onBack }: { onBack: () => void }) {
@@ -77,6 +79,8 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const saveStatus = useResumeSaveStatus((state) => state.status)
 
   const user = useAuthStore((state) => state.user)
+  const cloudAutoSaveStatus = useCloudAutoSaveStatus((state) => state.status)
+  const hasHydrated = useResumeStore((state) => state.hasHydrated)
 
   const cloudResumeLoadStatus = useResumeStore(
     (state) => state.cloudResumeLoadStatus,
@@ -85,6 +89,11 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
   const loadUserResume = useResumeStore((state) => state.loadUserResume)
 
   const hasUserResumeContent = useResumeStore(hasResumeContent)
+
+  useEffect(() => {
+    if (!user || !hasHydrated) return
+    return startCloudAutoSave(user.id)
+  }, [hasHydrated, user?.id])
 
   const copy = {
     saved: isArabic ? "محفوظ تلقائيًا على هذا الجهاز" : "Saved on this device",
@@ -95,6 +104,14 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     saveError: isArabic
       ? "تعذر حفظ التغييرات على هذا الجهاز"
       : "Could not save changes on this device",
+    cloudSaving: isArabic ? "جارٍ الحفظ سحابيًا..." : "Saving to cloud...",
+    cloudSaved: isArabic ? "تم حفظ التغييرات" : "All changes saved",
+    cloudReady: isArabic ? "الحفظ السحابي جاهز" : "Cloud auto-save ready",
+    cloudIncomplete: isArabic
+      ? "أكمل الاسم والبريد والهاتف للحفظ"
+      : "Add your name, email, and phone to save",
+    cloudError: isArabic ? "تعذر الحفظ سحابيًا" : "Cloud save failed",
+    checkAts: isArabic ? "فحص ATS" : "Check ATS",
     loadingCloudResume: isArabic
       ? "جارٍ تحميل السيرة المحفوظة من حسابك..."
       : "Loading your saved resume from your account...",
@@ -159,6 +176,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
     useState<"form" | "preview">("form")
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [exportError, setExportError] = useState("")
+  const [isAtsOpen, setIsAtsOpen] = useState(false)
 
   const completionFields = [
     personal.name,
@@ -381,19 +399,38 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
             <strong>{personal.name.trim() || copy.newResume}</strong>
             <span
               className={`save-state${
-                saveStatus === "saving" ? " saving" : ""
+                user
+                  ? cloudAutoSaveStatus === "saving"
+                    ? " saving"
+                    : cloudAutoSaveStatus === "error" ||
+                        cloudAutoSaveStatus === "incomplete"
+                      ? " error"
+                      : ""
+                  : saveStatus === "saving"
+                    ? " saving"
+                    : ""
               }`}
               role="status"
               aria-live="polite"
             >
               <span />
-              {saveStatus === "saving"
-                ? copy.saving
-                : saveStatus === "error"
-                  ? copy.saveError
-                  : saveStatus === "saved"
-                    ? copy.savedChanges
-                    : copy.saved}
+              {user
+                ? cloudAutoSaveStatus === "saving"
+                  ? copy.cloudSaving
+                  : cloudAutoSaveStatus === "saved"
+                    ? copy.cloudSaved
+                    : cloudAutoSaveStatus === "incomplete"
+                      ? copy.cloudIncomplete
+                      : cloudAutoSaveStatus === "error"
+                        ? copy.cloudError
+                        : copy.cloudReady
+                : saveStatus === "saving"
+                  ? copy.saving
+                  : saveStatus === "error"
+                    ? copy.saveError
+                    : saveStatus === "saved"
+                      ? copy.savedChanges
+                      : copy.saved}
             </span>
           </div>
         </div>
@@ -430,13 +467,13 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
         </div>
         <div className="header-actions">
           <ThemeToggle />
-          {user ? (
-            <SaveResumeButton isArabic={isArabic} />
-          ) : (
-            <Link className="cloud-save-button" href="/auth">
-              {isArabic ? "دخول للحفظ السحابي" : "Sign in to save"}
-            </Link>
-          )}
+          <button
+            className="ats-check-button"
+            type="button"
+            onClick={() => setIsAtsOpen(true)}
+          >
+            {copy.checkAts}
+          </button>
           <button
             className="download-button"
             onClick={printResume}
@@ -459,6 +496,7 @@ export function ResumeEditor({ onBack }: { onBack: () => void }) {
           {exportError}
         </p>
       )}
+      {isAtsOpen && <AtsCheckerModal onClose={() => setIsAtsOpen(false)} />}
       {user && cloudResumeLoadStatus === "loading" && (
         <p
           className="cloud-save-feedback"

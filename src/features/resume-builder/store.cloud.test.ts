@@ -19,7 +19,13 @@ vi.mock("@/services/resumeService", () => ({
 
 import { emptyResume } from "@/features/resume-builder/model"
 import type { SavedResume } from "@/services/resumeService"
-import { useResumeStore } from "@/features/resume-builder/store"
+import {
+  startCloudAutoSave,
+  useCloudAutoSaveStatus,
+  useResumeStore,
+} from "@/features/resume-builder/store"
+
+let stopAutoSave: (() => void) | undefined
 
 function createMemoryStorage() {
   const values = new Map<string, string>()
@@ -33,6 +39,7 @@ function createMemoryStorage() {
 describe("resume store cloud actions", () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    stopAutoSave = undefined
     vi.stubGlobal("localStorage", createMemoryStorage())
     mocks.user = { id: "user-1" }
     mocks.saveResume.mockReset()
@@ -52,6 +59,7 @@ describe("resume store cloud actions", () => {
   })
 
   afterEach(() => {
+    stopAutoSave?.()
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
     vi.unstubAllGlobals()
@@ -269,5 +277,140 @@ describe("resume store cloud actions", () => {
     )
 
     expect(useResumeStore.getState().cloudResumeLoadStatus).toBe("error")
+  })
+
+  it("debounces edited resume data into one cloud save", async () => {
+    const savedResume = {
+      id: "cloud-resume-auto",
+      user_id: "user-1",
+      title: "Amina Example",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+      resume_data: emptyResume,
+    } satisfies SavedResume
+    mocks.saveResume.mockResolvedValue(savedResume)
+    stopAutoSave = startCloudAutoSave("user-1", 900)
+
+    useResumeStore.getState().updatePersonal("name", "Amina Example")
+    useResumeStore.getState().updatePersonal("email", "amina@example.com")
+    useResumeStore.getState().updatePersonal("phone", "+1 212 555 0142")
+    await vi.advanceTimersByTimeAsync(899)
+
+    expect(mocks.saveResume).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(mocks.saveResume).toHaveBeenCalledTimes(1)
+    expect(mocks.saveResume).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        personal: expect.objectContaining({ name: "Amina Example" }),
+      }),
+      undefined,
+    )
+    expect(useCloudAutoSaveStatus.getState().status).toBe("saved")
+  })
+
+  it("serializes saves and persists changes made during an in-flight save", async () => {
+    const savedResume = {
+      id: "cloud-resume-auto",
+      user_id: "user-1",
+      title: "Amina Example",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+      resume_data: emptyResume,
+    } satisfies SavedResume
+    let resolveFirstSave!: (resume: SavedResume) => void
+    mocks.saveResume
+      .mockImplementationOnce(
+        () =>
+          new Promise<SavedResume>((resolve) => {
+            resolveFirstSave = resolve
+          }),
+      )
+      .mockResolvedValue(savedResume)
+    stopAutoSave = startCloudAutoSave("user-1", 900)
+
+    useResumeStore.getState().updatePersonal("name", "Amina Example")
+    useResumeStore.getState().updatePersonal("email", "amina@example.com")
+    useResumeStore.getState().updatePersonal("phone", "+1 212 555 0142")
+    await vi.advanceTimersByTimeAsync(900)
+    expect(mocks.saveResume).toHaveBeenCalledTimes(1)
+
+    useResumeStore.getState().updateSummary("Experienced frontend engineer.")
+    await vi.advanceTimersByTimeAsync(900)
+    expect(mocks.saveResume).toHaveBeenCalledTimes(1)
+
+    resolveFirstSave(savedResume)
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(900)
+
+    expect(mocks.saveResume).toHaveBeenCalledTimes(2)
+    expect(mocks.saveResume).toHaveBeenLastCalledWith(
+      "user-1",
+      expect.objectContaining({ summary: "Experienced frontend engineer." }),
+      "cloud-resume-auto",
+    )
+  })
+
+  it("auto-saves local edits preserved during cloud loading", async () => {
+    let resolveFetch!: (resumes: SavedResume[]) => void
+    const savedResume: SavedResume = {
+      id: "cloud-resume-local",
+      user_id: "user-1",
+      title: "Local Draft",
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+      resume_data: emptyResume,
+    }
+    mocks.fetchUserResumes.mockImplementation(
+      () =>
+        new Promise<SavedResume[]>((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+    mocks.saveResume.mockResolvedValue(savedResume)
+    stopAutoSave = startCloudAutoSave("user-1", 900)
+
+    const loading = useResumeStore.getState().loadUserResume()
+    useResumeStore.getState().updatePersonal("name", "Local Draft")
+    useResumeStore.getState().updatePersonal("email", "local@example.com")
+    useResumeStore.getState().updatePersonal("phone", "+1 212 555 0142")
+    resolveFetch([
+      {
+        ...savedResume,
+        id: "cloud-resume-remote",
+        title: "Cloud Draft",
+        resume_data: {
+          ...emptyResume,
+          personal: { ...emptyResume.personal, name: "Cloud Draft" },
+        },
+      },
+    ])
+    await loading
+
+    expect(useResumeStore.getState().personal.name).toBe("Local Draft")
+    expect(useResumeStore.getState().cloudResumeLoadStatus).toBe(
+      "local-draft-preserved",
+    )
+    await vi.advanceTimersByTimeAsync(900)
+
+    expect(mocks.saveResume).toHaveBeenCalledTimes(1)
+    expect(mocks.saveResume).toHaveBeenCalledWith(
+      "user-1",
+      expect.objectContaining({
+        personal: expect.objectContaining({ name: "Local Draft" }),
+      }),
+      undefined,
+    )
+  })
+
+  it("reports incomplete contact information instead of treating validation as a save error", async () => {
+    stopAutoSave = startCloudAutoSave("user-1", 900)
+    useResumeStore.getState().updateSummary("A resume update without contact details.")
+
+    await vi.advanceTimersByTimeAsync(900)
+
+    expect(mocks.saveResume).not.toHaveBeenCalled()
+    expect(useCloudAutoSaveStatus.getState().status).toBe("incomplete")
   })
 })
