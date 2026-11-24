@@ -95,12 +95,27 @@ describe("authentication store", () => {
     authApi.onAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     })
-    authApi.getSession.mockResolvedValue({
+    let resolveSession: (
+      result: { data: { session: null }; error: null },
+    ) => void = () => {}
+    authApi.getSession.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSession = resolve
+      }),
+    )
+
+    const initialization = useAuthStore.getState().initializeAuth()
+    const duplicateInitialization =
+      useAuthStore.getState().initializeAuth()
+
+    expect(duplicateInitialization).toBe(initialization)
+
+    resolveSession({
       data: { session: null },
       error: null,
     })
 
-    await useAuthStore.getState().initializeAuth()
+    await initialization
 
     const listener = authApi.onAuthStateChange.mock.calls[0][0]
     const session = {

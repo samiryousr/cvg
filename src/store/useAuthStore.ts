@@ -45,8 +45,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     }),
 
   initializeAuth: () => {
-    if (authSubscription) return Promise.resolve()
     if (initialization) return initialization
+    if (authSubscription) return Promise.resolve()
 
     set({ isLoading: true, error: null })
 

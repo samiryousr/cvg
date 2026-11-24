@@ -25,11 +25,9 @@ export function StartButton({
 }: StartButtonProps) {
   const router = useRouter()
 
-  const user = useAuthStore((state) => state.user)
-
-  const authLoading = useAuthStore((state) => state.isLoading)
-
   const [isCheckingResumes, setIsCheckingResumes] = useState(false)
+
+  const [isResolvingAuth, setIsResolvingAuth] = useState(false)
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
@@ -60,10 +58,22 @@ export function StartButton({
     }
   }
 
-  const handleClick = () => {
-    if (authLoading || isCheckingResumes) return
+  const handleClick = async () => {
+    if (isResolvingAuth || isCheckingResumes) return
 
-    if (!user) {
+    let currentUser = useAuthStore.getState().user
+
+    if (useAuthStore.getState().isLoading) {
+      setIsResolvingAuth(true)
+      try {
+        await useAuthStore.getState().initializeAuth()
+        currentUser = useAuthStore.getState().user
+      } finally {
+        setIsResolvingAuth(false)
+      }
+    }
+
+    if (!currentUser) {
       setIsAuthModalOpen(true)
 
       return
@@ -76,12 +86,12 @@ export function StartButton({
     <>
       <button
         className={className}
-        disabled={authLoading || isCheckingResumes}
-        onClick={handleClick}
+        disabled={isResolvingAuth || isCheckingResumes}
+        onClick={() => void handleClick()}
         type="button"
       >
-        {authLoading
-          ? "جارٍ التحقق..."
+        {isResolvingAuth
+          ? "جارٍ التحقق من الحساب..."
           : isCheckingResumes
             ? "جارٍ التحقق من سيرك..."
             : children}
