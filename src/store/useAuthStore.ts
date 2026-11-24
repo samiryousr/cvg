@@ -51,12 +51,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true, error: null })
 
     const pendingInitialization = (async () => {
-      let authEventRevision = 0
+      let resolveInitialSession: () => void = () => {}
+      const initialSession = new Promise<void>((resolve) => {
+        resolveInitialSession = resolve
+      })
 
       try {
         const supabase = getSupabaseClient()
-        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-          authEventRevision += 1
+        const { data } = supabase.auth.onAuthStateChange((event, session) => {
           set({
             session,
             user: session?.user ?? null,
@@ -64,16 +66,11 @@ export const useAuthStore = create<AuthState>((set) => ({
             error: null,
             notice: null,
           })
+          if (event === "INITIAL_SESSION") resolveInitialSession()
         })
         authSubscription = data.subscription
 
-        const revisionBeforeGetSession = authEventRevision
-        const { data: sessionData, error } = await supabase.auth.getSession()
-        if (error) throw error
-
-        if (authEventRevision === revisionBeforeGetSession) {
-          useAuthStore.getState().setSession(sessionData.session)
-        }
+        await initialSession
       } catch (error) {
         console.error("Could not initialize Supabase authentication.", error)
         set({

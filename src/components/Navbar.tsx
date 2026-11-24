@@ -51,6 +51,7 @@ export function Navbar({
   const error = useAuthStore((state) => state.error)
 
   const signOut = useAuthStore((state) => state.signOut)
+  const initializeAuth = useAuthStore((state) => state.initializeAuth)
 
   const displayName =
     (typeof user?.user_metadata.full_name === "string" &&
@@ -92,11 +93,7 @@ export function Navbar({
 
         <div className="site-header-actions">
           <ThemeToggle />
-          {isLoading ? (
-            <span className="navbar-auth-loading" role="status">
-              جارٍ التحقق...
-            </span>
-          ) : user ? (
+          {user ? (
             <details className="account-menu">
               <summary
                 aria-label={`قائمة حساب ${displayName}`}
@@ -135,7 +132,14 @@ export function Navbar({
             <button
               aria-label="تسجيل الدخول أو إنشاء حساب"
               className="navbar-user-button"
-              onClick={() => setAuthModalOpen(true)}
+              onClick={() => {
+                void (async () => {
+                  if (useAuthStore.getState().isLoading) {
+                    await initializeAuth()
+                  }
+                  if (!useAuthStore.getState().user) setAuthModalOpen(true)
+                })()
+              }}
               title="تسجيل الدخول"
               type="button"
             >

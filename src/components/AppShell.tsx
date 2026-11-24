@@ -19,8 +19,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
 
   useEffect(() => {
+    if (
+      pathname !== "/auth" &&
+      pathname !== "/resumes" &&
+      pathname !== "/builder" &&
+      pathname !== "/editor"
+    ) {
+      return
+    }
+
     void initializeAuth()
-  }, [initializeAuth])
+  }, [initializeAuth, pathname])
 
   useEffect(() => {
     useResumeStore.setState({ colorMode: getPreferredColorMode() })

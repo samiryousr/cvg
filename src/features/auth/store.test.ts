@@ -95,14 +95,6 @@ describe("authentication store", () => {
     authApi.onAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     })
-    let resolveSession: (
-      result: { data: { session: null }; error: null },
-    ) => void = () => {}
-    authApi.getSession.mockReturnValue(
-      new Promise((resolve) => {
-        resolveSession = resolve
-      }),
-    )
 
     const initialization = useAuthStore.getState().initializeAuth()
     const duplicateInitialization =
@@ -110,14 +102,11 @@ describe("authentication store", () => {
 
     expect(duplicateInitialization).toBe(initialization)
 
-    resolveSession({
-      data: { session: null },
-      error: null,
-    })
+    const listener = authApi.onAuthStateChange.mock.calls[0][0]
+    listener("INITIAL_SESSION", null)
 
     await initialization
 
-    const listener = authApi.onAuthStateChange.mock.calls[0][0]
     const session = {
       access_token: "access-token",
       token_type: "bearer",
@@ -140,6 +129,7 @@ describe("authentication store", () => {
       user: session.user,
       isLoading: false,
     })
+    expect(authApi.getSession).not.toHaveBeenCalled()
 
     useAuthStore.getState().setUser(null)
     expect(useAuthStore.getState().user).toBeNull()
